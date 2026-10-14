@@ -37,3 +37,6 @@ Sanitise text fields, null invalid jsonb; plus B-002 log + B-003 cancel (same li
 
 ## 2026-10-14T17:06:08Z — lead gate
 Throwaway postgres:18.6-alpine: unit ok (audit 1.626s, tlsconf 1.836s, stubserver 4.377s); integration ok 5.930s; golangci-lint 0 issues. PASS. Report, decisions D-001..D-003, PR.
+
+## 2026-10-14T17:25:32Z — integration fix gate
+Coder-written regression test accepted under the box (protocol deviation, logged). Lead re-ran: internal/... ok, golangci-lint 0. Merged as PR.

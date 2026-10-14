@@ -177,3 +177,7 @@ No `needs` among light jobs; prebuilt actions only; CI never starts the obs stac
 ## 10. Evolution log
 | Phase | Merged | Shipped | Tests green | Deviations |
 |---|---|---|---|---|
+| C-0 skeleton | 16:54 PR #1, #2 | module, ports (+ request-id ctx helpers), config, gencert, TLS stub cmd, Dockerfile, compose, Makefile, acceptance suite | config unit; acceptance 5/15 | oapi-codegen as go.mod tool; USER 65532; .gitleaks.toml allowlists git-ignored certs |
+| D-1 | 17:06 PR #3 | audit writer + migration + pool metrics, tlsconf, vendor stub + ctl | audit 7+4 integ, tlsconf 5, stub | Close/ClosePool split (D-002); row sanitisation (D-003) |
+| A-1 | 17:10 PR #4 | vendor client, prober, cache, lookup | artic, cache, lookup + integration vs stub | breaker per call (D-004); detached singleflight (D-005); stale/audit scope (D-006) |
+| B-1 | 17:11 PR #5 | contract, generated router, validation, server chain, problem+json, Swagger UI | server/contract | middleware order (D-008); servers "/", /docs/{file} (D-007) |

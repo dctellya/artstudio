@@ -80,6 +80,7 @@ func New(cfg config.Config, reg prometheus.Registerer, opts ...Option) (*Client,
 		o(c)
 	}
 	c.http.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	c.m.initLabels(cfg.UpstreamMaxRetries)
 	c.breaker = c.newBreaker()
 	return c, nil
 }
