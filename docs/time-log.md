@@ -22,3 +22,4 @@ Box: 90 minutes, t0 = 2026-10-14T16:36Z (F-002). Times from `date -u`.
 | 17:07 | +31 | E validate green (c4832a6), E reviewer spawned; B blocking back to tester |
 | 17:10 | +34 | A merged (PR #4) |
 | 17:11 | +35 | B merged (PR #5) — G2 done (target +55) |
+| 17:17 | +41 | wiring green on curls; acceptance merge running; A metrics-init fix |
