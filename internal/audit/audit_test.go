@@ -203,3 +203,16 @@ func TestNoopAuditor(t *testing.T) {
 	a.Record(call(1))
 	assert.NoError(t, a.Close(context.Background()))
 }
+
+func TestWritesTotalExportedFromStart(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	w := audit.NewWithSink(testConfig(t, nil), reg, newSink(false))
+	t.Cleanup(func() { _ = w.Close(context.Background()) })
+	for _, name := range []string{
+		"artstudio_audit_writes_total", "artstudio_audit_dropped_total",
+		"artstudio_audit_queue_depth", "artstudio_audit_write_duration_seconds",
+	} {
+		_, ok := metricSum(t, reg, name)
+		assert.True(t, ok, "%s not exported before any write", name)
+	}
+}
