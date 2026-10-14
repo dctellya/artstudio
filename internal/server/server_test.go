@@ -39,7 +39,7 @@ func TestErrorMapping(t *testing.T) {
 		{"bad upstream", ports.ErrBadUpstream, 502, ""},
 		{"budget exceeded", ports.ErrBudgetExceeded, 504, ""},
 		{"retry-after honoured", fmt.Errorf("x: %w", errors.Join(ports.ErrBreakerOpen, retryErr{7 * time.Second})), 503, "7"},
-		{"retry-after on rate limited", struct{ error }{retryErr{3 * time.Second}}, 503, "3"},
+		{"retry-after on rate limited", rateLimitedRetry{3 * time.Second}, 503, "3"},
 		{"unknown error", errors.New("boom"), 500, ""},
 	}
 	for _, c := range cases {
@@ -65,7 +65,7 @@ func TestErrorMapping(t *testing.T) {
 
 // The vendor payload (carried in error text) never reaches the client.
 func TestProblemNeverContainsVendorBody(t *testing.T) {
-	const secret = "VENDOR-BODY-SECRET-<html>stack trace</html>"
+	const secret = "VENDOR-BODY-SECRET-<html>stack trace</html>" //nolint:gosec // test sentinel, not a credential
 	for _, err := range []error{
 		fmt.Errorf("%w: %s", ports.ErrBadUpstream, secret),
 		fmt.Errorf("%w: %s", ports.ErrNotFound, secret),

@@ -14,3 +14,6 @@ Role: TESTER of Team B phase 1 (worktree artstudio-wt/b, branch team-b/phase-1).
 Command: go test -race ./internal/server/...   (contract suite also reads ../../api/openapi.yaml)
 Contract: TestContract_InvalidParamsRejectedWith400Problem (limit 0/51, page 0/51, limit=50&page=21, limit=abc, id 0/-3/abc -> 400 problem+json, lookup not called); TestContract_BoundaryParamsAccepted (limit*page=1000 ok); TestContract_ResponsesValidateAgainstSchema (openapi3filter.ValidateResponse for 200/404/503/502/504/400, health, ready, version; spec itself must validate).
 Server unit: TestErrorMapping, TestProblemNeverContainsVendorBody, TestRequestID, TestPerIPRateLimit429, TestLoadShedAtMaxInFlight, TestPanicBecomes500Problem, TestHTTPServerTimeoutsFromConfig, TestHealth, TestReady, TestVersion, TestDocsAndOpenAPIServed, TestMetaAndCacheHeaders, TestAccessLogLine.
+
+## 2026-10-14T17:02:59Z fixes
+RetryAfter case now uses rateLimitedRetry (Error, RetryAfter, Unwrap to ErrUpstreamRateLimited); G101 nolint on the secret sentinel. go test -race and golangci-lint run on ./internal/server/... checked.

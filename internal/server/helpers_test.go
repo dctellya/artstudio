@@ -57,6 +57,13 @@ type retryErr struct{ after time.Duration }
 func (e retryErr) Error() string             { return "retry later" }
 func (e retryErr) RetryAfter() time.Duration { return e.after }
 
+// rateLimitedRetry is ports.ErrUpstreamRateLimited that also implements ports.RetryAfterError.
+type rateLimitedRetry struct{ after time.Duration }
+
+func (e rateLimitedRetry) Error() string             { return "upstream rate limited, retry later" }
+func (e rateLimitedRetry) RetryAfter() time.Duration { return e.after }
+func (e rateLimitedRetry) Unwrap() error             { return ports.ErrUpstreamRateLimited }
+
 type fakeChecker struct {
 	name string
 	res  ports.CheckResult
