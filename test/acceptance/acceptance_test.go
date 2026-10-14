@@ -194,7 +194,7 @@ func TestReadyVendorNeverBlocks(t *testing.T) {
 		Checks map[string]map[string]any `json:"checks"`
 	}
 	require.NoError(t, json.Unmarshal(body, &out))
-	for _, name := range []string{"vendor", "db", "cache"} {
+	for _, name := range []string{"config", "vendor", "db", "cache"} {
 		require.Contains(t, out.Checks, name)
 	}
 }
