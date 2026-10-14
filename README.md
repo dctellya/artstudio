@@ -28,7 +28,6 @@ DOCKER_DEFAULT_PLATFORM= docker compose up -d --build --wait
 
 `DOCKER_DEFAULT_PLATFORM=` forces a native build; harmless if the variable is not set, required if your shell sets it (Go's TLS under emulation breaks the handshake).
 
-> Build status (updated at every merge): resilience, cache, audit log, contract and hardening are merged; the `cmd/` wiring, CI workflow and the observability overlay (`compose.obs.yaml`, Grafana on 3000) are in review and land in the next merges. Until the wiring merges, `main` runs the walking-skeleton binary.
 
 Everything is HTTPS on loopback, signed by the local CA:
 
@@ -131,7 +130,9 @@ docker compose down       # add -v to delete the data volumes
 
 ```sh
 make test               # unit and contract tests, no containers
-make test-acceptance    # end-to-end checks against the running stack
+make test-acceptance    # end-to-end checks against the running stack (12 checks; chaos and stop below)
+make test-acceptance-stop                 # graceful stop: SIGTERM → draining → audit flushed → exit 0
+make chaos-up && make test-acceptance-chaos   # breaker opens, stale served; needs a fresh chaos-up each run
 make ci                 # what CI runs: vet, lint, contract lint, tests, govulncheck, gitleaks, hadolint, image build
 ```
 
@@ -139,6 +140,8 @@ make ci                 # what CI runs: vet, lint, contract lint, tests, govulnc
 
 - **macOS curl says `bad decrypt` or the handshake fails:** the image ran emulated because your shell sets `DOCKER_DEFAULT_PLATFORM=linux/amd64`; keep the `DOCKER_DEFAULT_PLATFORM=` prefix on the compose line.
 - **`*.127.0.0.1.nip.io` doesn't resolve:** use the `localhost` URLs; the certs cover them.
+- **api unhealthy after `cp .env.example .env` on a machine that ran it before:** the `artstudio_pgdata` volume keeps the old `POSTGRES_PASSWORD`; `docker compose down -v` (deletes the audit rows) or reuse the old password.
+- **`/version` says `dev`:** the image was built by `docker compose` without build args; `make up` stamps version, commit and build date.
 - **Searches return 503:** the vendor is down or the breaker is open and that query isn't cached; `/ready` shows the state.
 - **`docker compose` complains about `GRAFANA_ADMIN_PASSWORD`:** set it in `.env`; the obs overlay refuses an empty admin password.
 
