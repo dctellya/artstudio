@@ -3,11 +3,6 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
-	"crypto/tls"
-	"crypto/x509"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,38 +11,35 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
-	"strings"
 	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/dctellya/artstudio/internal/artic"
+	"github.com/dctellya/artstudio/internal/audit"
+	"github.com/dctellya/artstudio/internal/cache"
 	"github.com/dctellya/artstudio/internal/config"
+	"github.com/dctellya/artstudio/internal/lookup"
 	"github.com/dctellya/artstudio/internal/ports"
-	"github.com/dctellya/artstudio/internal/skeleton"
+	"github.com/dctellya/artstudio/internal/server"
+	"github.com/dctellya/artstudio/internal/tlsconf"
 )
 
 // Set by -ldflags "-X main.version=... -X main.commit=...".
 var (
-	version = "dev"
-	commit  = "none"
+	version   = "dev"
+	commit    = "none"
+	buildDate = "unknown"
 )
 
 const (
-	requestIDHeader   = "X-Request-ID"
-	cacheHeader       = "X-Cache"
-	hstsValue         = "max-age=63072000; includeSubDomains"
-	defaultListen     = ":8443"
-	healthcheckTO     = 3 * time.Second
-	defaultLimit      = 12
-	defaultPage       = 1
-	maxQueryLen       = 100
-	exitFailure       = 1
-	maxRequestIDChars = 128
-	requestIDBytes    = 16
+	defaultListen = ":8443"
+	defaultCAFile = "/certs/ca.pem"
+	healthcheckTO = 3 * time.Second
+	exitFailure   = 1
+	listenerCount = 2
 )
 
 func main() {
@@ -66,23 +58,15 @@ func main() {
 
 // healthcheck GETs /health on the local TLS listener, trusting TLS_CA_FILE.
 func healthcheck() error {
-	caFile := envOr("TLS_CA_FILE", "/certs/ca.pem")
-	pemBytes, err := os.ReadFile(caFile) //nolint:gosec // operator-supplied CA path
+	tlsCfg, err := tlsconf.Client(envOr("TLS_CA_FILE", defaultCAFile))
 	if err != nil {
 		return err
-	}
-	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(pemBytes) {
-		return errors.New("no CA certificate in " + caFile)
 	}
 	_, port, err := net.SplitHostPort(envOr("LISTEN_ADDR", defaultListen))
 	if err != nil {
 		return err
 	}
-	client := &http.Client{
-		Timeout:   healthcheckTO,
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS13}},
-	}
+	client := &http.Client{Timeout: healthcheckTO, Transport: &http.Transport{TLSClientConfig: tlsCfg}}
 	resp, err := client.Get("https://localhost:" + port + "/health") //nolint:noctx // bounded by client timeout
 	if err != nil {
 		return err
@@ -101,25 +85,19 @@ func envOr(key, def string) string {
 	return def
 }
 
-func run() error {
-	cfg, err := config.Load()
-	if err != nil {
-		return err
-	}
+func newLogger(cfg config.Config, extra slog.Handler) (*slog.Logger, error) {
 	var level slog.Level
 	if err := level.UnmarshalText([]byte(cfg.LogLevel)); err != nil {
-		return fmt.Errorf("LOG_LEVEL: %w", err)
+		return nil, fmt.Errorf("LOG_LEVEL: %w", err)
 	}
-	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
-	slog.SetDefault(log)
-	log.Info("starting", "version", version, "commit", commit, "config", cfg)
-
-	cert, err := tls.LoadX509KeyPair(cfg.TLSCertFile, cfg.TLSKeyFile)
-	if err != nil {
-		return fmt.Errorf("load TLS keypair: %w", err)
+	var h slog.Handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	if extra != nil {
+		h = slog.NewMultiHandler(h, extra)
 	}
-	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS13, Certificates: []tls.Certificate{cert}}
+	return slog.New(h), nil
+}
 
+func newRegistry() *prometheus.Registry {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(collectors.NewGoCollector(), collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 	buildInfo := prometheus.NewGauge(prometheus.GaugeOpts{
@@ -128,168 +106,112 @@ func run() error {
 	})
 	buildInfo.Set(1)
 	reg.MustRegister(buildInfo)
+	return reg
+}
 
-	s := &app{lookup: skeleton.NewLookup(cfg), log: log}
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /health", s.health)
-	mux.HandleFunc("GET /art/{query}", s.search)
+// newAuditor returns the Postgres writer (with its readiness checker) or a noop when DATABASE_URL is empty.
+func newAuditor(ctx context.Context, cfg config.Config, reg prometheus.Registerer) (ports.Auditor, *audit.Writer, error) {
+	if cfg.DatabaseURL == "" {
+		return audit.Noop(), nil, nil
+	}
+	w, err := audit.New(ctx, cfg, reg)
+	if err != nil {
+		return nil, nil, fmt.Errorf("audit: %w", err)
+	}
+	return w, w, nil
+}
 
-	api := newServer(cfg.ListenAddr, hsts(requestID(mux)), tlsCfg, cfg)
-	metricsMux := http.NewServeMux()
-	metricsMux.Handle("GET /metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-	metrics := newServer(cfg.MetricsAddr, metricsMux, tlsCfg, cfg)
+func run() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+	defer stop()
 
-	errs := make(chan error, 2)
-	for _, srv := range []*http.Server{api, metrics} {
+	extra, flushTelemetry, err := setupTelemetry(ctx, cfg)
+	if err != nil {
+		return err
+	}
+	log, err := newLogger(cfg, extra)
+	if err != nil {
+		return err
+	}
+	slog.SetDefault(log)
+	log.Info("starting", "version", version, "commit", commit, "config", cfg)
+
+	tlsCfg, err := tlsconf.Server(cfg.TLSCertFile, cfg.TLSKeyFile)
+	if err != nil {
+		return err
+	}
+
+	reg := newRegistry()
+	auditor, writer, err := newAuditor(ctx, cfg, reg)
+	if err != nil {
+		return err
+	}
+	store := cache.New(cfg, reg)
+	vendor, err := artic.New(cfg, reg)
+	if err != nil {
+		return fmt.Errorf("artic: %w", err)
+	}
+	prober := artic.NewProber(vendor, cfg, reg)
+	proberCtx, stopProber := context.WithCancel(ctx)
+	defer stopProber()
+	proberDone := make(chan struct{})
+	go func() {
+		defer close(proberDone)
+		prober.Run(proberCtx)
+	}()
+
+	checkers := []ports.Checker{store.Checker(), prober}
+	if writer != nil {
+		checkers = append([]ports.Checker{writer}, checkers...)
+	}
+	srv, err := server.New(cfg, server.Deps{
+		Lookup:   lookup.New(vendor, store, auditor, cfg, reg),
+		Checkers: checkers,
+		Registry: reg,
+		Logger:   log,
+		Version:  server.VersionInfo{Version: version, Commit: commit, GoVersion: runtime.Version(), BuildDate: buildDate},
+	})
+	if err != nil {
+		return err
+	}
+	api := srv.HTTPServer(cfg.ListenAddr, tlsconf.HSTS(srv.Handler()), tlsCfg)
+	metrics := srv.HTTPServer(cfg.MetricsAddr, srv.MetricsHandler(), tlsCfg)
+	servers := []*http.Server{api, metrics}
+
+	errs := make(chan error, listenerCount)
+	for _, s := range servers {
 		go func() {
-			log.Info("listening", "addr", srv.Addr)
+			log.Info("listening", "addr", s.Addr)
 			// Certificates come from tlsCfg.
-			if err := srv.ListenAndServeTLS("", ""); !errors.Is(err, http.ErrServerClosed) {
+			if err := s.ListenAndServeTLS("", ""); !errors.Is(err, http.ErrServerClosed) {
 				errs <- err
 			}
 		}()
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer stop()
+	var runErr error
 	select {
-	case err := <-errs:
-		return err
+	case runErr = <-errs:
 	case <-ctx.Done():
 	}
-	log.Info("shutting down")
+	log.Info("shutdown: draining")
 	shutCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
-	var shutErr error
-	for _, srv := range []*http.Server{api, metrics} {
-		shutErr = errors.Join(shutErr, srv.Shutdown(shutCtx))
+	for _, s := range servers {
+		runErr = errors.Join(runErr, s.Shutdown(shutCtx))
 	}
-	return shutErr
-}
-
-func newServer(addr string, h http.Handler, tlsCfg *tls.Config, cfg config.Config) *http.Server {
-	return &http.Server{
-		Addr:              addr,
-		Handler:           h,
-		TLSConfig:         tlsCfg,
-		ReadHeaderTimeout: cfg.HTTPReadHeaderTimeout,
-		ReadTimeout:       cfg.HTTPReadTimeout,
-		WriteTimeout:      cfg.HTTPWriteTimeout,
-		IdleTimeout:       cfg.HTTPIdleTimeout,
+	stopProber()
+	<-proberDone
+	runErr = errors.Join(runErr, auditor.Close(shutCtx))
+	if writer != nil {
+		writer.ClosePool()
 	}
-}
-
-func hsts(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Strict-Transport-Security", hstsValue)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func requestID(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := r.Header.Get(requestIDHeader)
-		if id == "" || len(id) > maxRequestIDChars {
-			id = newRequestID()
-		}
-		r.Header.Set(requestIDHeader, id)
-		w.Header().Set(requestIDHeader, id)
-		next.ServeHTTP(w, r)
-	})
-}
-
-func newRequestID() string {
-	b := make([]byte, requestIDBytes)
-	_, _ = rand.Read(b) // never fails on supported platforms
-	return hex.EncodeToString(b)
-}
-
-type app struct {
-	lookup ports.Lookup
-	log    *slog.Logger
-}
-
-func (a *app) health(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
-type artworkJSON struct {
-	ID       int     `json:"id"`
-	Title    string  `json:"title"`
-	Artist   string  `json:"artist"`
-	Date     string  `json:"date"`
-	ImageID  *string `json:"image_id"`
-	ImageURL *string `json:"image_url"`
-}
-
-func (a *app) search(w http.ResponseWriter, r *http.Request) {
-	rid := r.Header.Get(requestIDHeader)
-	q := ports.SearchQuery{
-		Q:     strings.ToLower(strings.Join(strings.Fields(r.PathValue("query")), " ")),
-		Limit: intParam(r, "limit", defaultLimit),
-		Page:  intParam(r, "page", defaultPage),
-	}
-	if q.Q == "" || len(q.Q) > maxQueryLen {
-		a.problem(w, rid, http.StatusBadRequest, "invalid query")
-		return
-	}
-	res, meta, err := a.lookup.Search(r.Context(), q)
-	if err != nil {
-		a.log.Error("search failed", "request_id", rid, "error", err)
-		a.problem(w, rid, statusFor(err), "upstream error")
-		return
-	}
-	items := make([]artworkJSON, 0, len(res.Items))
-	for _, it := range res.Items {
-		items = append(items, artworkJSON{ID: it.ID, Title: it.Title, Artist: it.Artist, Date: it.Date, ImageID: nilIfEmpty(it.ImageID), ImageURL: nilIfEmpty(it.ImageURL)})
-	}
-	w.Header().Set(cacheHeader, string(meta.Cache))
-	writeJSON(w, http.StatusOK, map[string]any{
-		"data":       items,
-		"pagination": map[string]int{"total": res.Total, "limit": res.Limit, "page": res.Page},
-		"meta": map[string]any{
-			"request_id":          rid,
-			"cache":               meta.Cache,
-			"upstream_latency_ms": meta.UpstreamLatency.Milliseconds(),
-		},
-	})
-}
-
-func (a *app) problem(w http.ResponseWriter, rid string, status int, detail string) {
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"type": "about:blank", "title": http.StatusText(status), "status": status, "detail": detail, "request_id": rid,
-	})
-}
-
-func statusFor(err error) int {
-	switch {
-	case errors.Is(err, ports.ErrNotFound):
-		return http.StatusNotFound
-	case errors.Is(err, ports.ErrUpstreamRateLimited):
-		return http.StatusServiceUnavailable
-	default:
-		return http.StatusBadGateway
-	}
-}
-
-func intParam(r *http.Request, key string, def int) int {
-	if n, err := strconv.Atoi(r.URL.Query().Get(key)); err == nil && n > 0 {
-		return n
-	}
-	return def
-}
-
-func nilIfEmpty(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	log.Info("audit flushed")
+	runErr = errors.Join(runErr, flushTelemetry(shutCtx))
+	log.Info("telemetry flushed")
+	return runErr
 }

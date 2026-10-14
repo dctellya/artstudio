@@ -11,7 +11,7 @@ HADOLINT      := hadolint/hadolint:v2.15.1
 VACUUM        := dshanley/vacuum:v0.33.0
 FAULT         ?=
 
-.PHONY: certs build test test-integration test-acceptance up down lint vet vuln gitleaks hadolint image ci decisions chaos-up chaos heal obs-validate test-obs lint-api generate
+.PHONY: certs build test test-integration test-acceptance test-acceptance-chaos test-acceptance-stop up down lint vet vuln gitleaks hadolint image ci decisions chaos-up chaos heal obs-validate test-obs lint-api generate
 
 certs:
 	go run ./tools/gencert
@@ -27,6 +27,12 @@ test-integration:
 
 test-acceptance:
 	API_URL=$(API_URL) CA_FILE=$(CA_FILE) go test -count=1 -tags acceptance ./test/acceptance/...
+
+test-acceptance-chaos:
+	API_URL=$(API_URL) CA_FILE=$(CA_FILE) ACCEPTANCE_CHAOS=1 go test -count=1 -tags acceptance ./test/acceptance/...
+
+test-acceptance-stop:
+	API_URL=$(API_URL) CA_FILE=$(CA_FILE) ACCEPTANCE_STOP=1 go test -count=1 -tags acceptance ./test/acceptance/...
 
 up: certs
 	@test -f .env || { echo "missing .env: cp .env.example .env"; exit 1; }
@@ -45,7 +51,7 @@ lint-api:
 	$(DOCKER) run --rm -v "$(CURDIR):/work:ro" $(VACUUM) lint -d /work/api/openapi.yaml
 
 generate:
-	go tool oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
+	cd $(CURDIR) && go tool oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
 
 vuln:
 	govulncheck ./...
@@ -72,7 +78,7 @@ decisions:
 COMPOSE_FILES := -f compose.yaml $(if $(wildcard compose.obs.yaml),-f compose.obs.yaml)
 
 chaos-up: certs
-	UPSTREAM_BASE_URL=http://stub:8080/api/v1 $(COMPOSE) $(COMPOSE_FILES) --profile chaos up -d --build --wait
+	UPSTREAM_BASE_URL=http://stub:8080/api/v1 CACHE_TTL_SEARCH=1s CACHE_TTL_ARTWORK=1s $(COMPOSE) $(COMPOSE_FILES) --profile chaos up -d --build --wait
 
 chaos:
 	@test -n "$(FAULT)" || { echo "usage: make chaos FAULT=429|503|slow|timeout"; exit 1; }
