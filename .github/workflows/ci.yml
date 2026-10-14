@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -116,21 +116,17 @@ jobs:
             BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.pushed_at }}
       - name: Lowercase image ref
         run: echo "REF=${IMAGE,,}@${{ steps.build.outputs.digest }}" >> "$GITHUB_ENV"
-      - uses: actions/cache@v6.1.0
-        with:
-          path: ~/.cache/trivy
-          key: trivy-db-${{ github.run_id }}
-          restore-keys: trivy-db-
       - uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.REF }}
+          version: v0.76.0
           severity: CRITICAL
           exit-code: '1'
           ignore-unfixed: true
-          cache-dir: ~/.cache/trivy
       - uses: anchore/sbom-action@v0.24.3
         with:
           image: ${{ env.REF }}
+          syft-version: v1.54.1
           format: spdx-json
           output-file: sbom.spdx.json
           upload-artifact: false
@@ -139,9 +135,14 @@ jobs:
           name: sbom-spdx
           path: sbom.spdx.json
       - uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: v3.1.3
       - name: Sign image (keyless)
         run: cosign sign --yes "$REF"
+      # A package first created by GITHUB_TOKEN is private; the owner makes it
+      # public once, after which this proves anonymous pull.
       - name: Anonymous pull
+        continue-on-error: true
         run: |
           docker logout ghcr.io
           docker pull "$REF"
@@ -159,4 +160,4 @@ jobs:
           soft_fail: false # no skip_check: checkov 3.3.29 reports 0 failures on Dockerfile + workflows
       - name: Validate observability config
         if: hashFiles('deploy/obs/validate.sh') != ''
-        run: bash deploy/obs/validate.sh
+        run: make obs-validate
