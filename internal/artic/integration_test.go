@@ -43,7 +43,7 @@ func ctl(t *testing.T, base, fault string) {
 	resp, err := http.Post(base+"/__ctl?fault="+fault, "", nil)
 	require.NoError(t, err)
 	_ = resp.Body.Close()
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	require.True(t, resp.StatusCode >= 200 && resp.StatusCode < 300, "ctl status %d", resp.StatusCode)
 }
 
 // Client against the stub server: 503 -> retries -> breaker open -> stale.
@@ -104,5 +104,10 @@ func TestVendorFaultRetriesBreakerOpenThenStale(t *testing.T) {
 		_, _, err := vendor.Search(ctx, ports.SearchQuery{Q: "other", Limit: 10, Page: 1})
 		return err == nil
 	}, 3*time.Second, 50*time.Millisecond)
+	// Half-open needs BreakerHalfOpenMax successful trials to close.
+	for i := 0; i < cfg.BreakerHalfOpenMax; i++ {
+		_, _, err := vendor.Search(ctx, ports.SearchQuery{Q: "other", Limit: 10, Page: 1})
+		require.NoError(t, err)
+	}
 	assert.Equal(t, "closed", vendor.BreakerState())
 }
