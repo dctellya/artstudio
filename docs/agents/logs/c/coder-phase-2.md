@@ -6,3 +6,4 @@
 - 2026-10-14T17:44:15Z Edited ci.yml, Dockerfile, Makefile. actionlint 1.7.7 exit 0; make hadolint 0; buildx amd64+arm64 exit 0; make ci exit 0.
 - 2026-10-14T17:44:15Z Deviations: checkov skips none (none needed); compose.yaml not scanned (no framework); trivy cache-dir set to ~/.cache/trivy; BUILD_DATE uses head_commit.timestamp; make up/down verified via make -n only (compose.obs.yaml absent).
 - 2026-10-14T17:46:14Z Review fixes in ci.yml: continue-on-error on anonymous pull (package private until owner publishes), pinned trivy v0.76.0/syft v1.54.1/cosign v3.1.3, removed trivy cache step, cancel-in-progress only on PRs, policy uses make obs-validate. actionlint exit 0.
+- 2026-10-14T17:59:31Z Merged origin/main; govulncheck go-version-input '' (uses go.mod); all jobs runs-on ubuntu-24.04 with deliberate-bump comment. actionlint exit 0.
