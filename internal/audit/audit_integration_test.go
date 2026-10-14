@@ -77,3 +77,47 @@ func TestPoolMetricsRegistered(t *testing.T) {
 		assert.True(t, ok, "%s not registered", name)
 	}
 }
+
+func TestBadRowDoesNotLoseBatch(t *testing.T) {
+	ctx := context.Background()
+	url := dbURL(t)
+	cfg := testConfig(t, map[string]string{"DATABASE_URL": url, "AUDIT_BATCH": "10", "AUDIT_FLUSH": "1h"})
+	w, err := audit.New(ctx, cfg, prometheus.NewRegistry())
+	require.NoError(t, err)
+
+	reqID := "bad-" + time.Now().UTC().Format("20060102T150405.000000000")
+	row := func(op string) ports.VendorCall {
+		return ports.VendorCall{TS: time.Now(), RequestID: reqID, Operation: op, CacheStatus: ports.CacheMiss,
+			UpstreamStatus: 200, Attempts: 1, Breaker: "closed", Response: []byte(`{"ok":true}`)}
+	}
+	badUTF8, badNUL, badJSON := row("bad-utf8"), row("bad-nul"), row("bad-json")
+	badUTF8.CacheKey = "k\xff"
+	badNUL.Error = "e\x00x"
+	badJSON.Response = []byte(`{"a":"\u0000"}`)
+
+	for _, c := range []ports.VendorCall{row("good"), badUTF8, badNUL, badJSON} {
+		w.Record(c)
+	}
+	require.NoError(t, w.Close(ctx))
+
+	pool, err := pgxpool.New(ctx, url)
+	require.NoError(t, err)
+	t.Cleanup(pool.Close)
+
+	var n int
+	require.NoError(t, pool.QueryRow(ctx, `select count(*) from vendor_calls where request_id = $1`, reqID).Scan(&n))
+	require.Equal(t, 4, n, "good row and all bad rows must land")
+
+	var respNull bool
+	var respBytes int
+	require.NoError(t, pool.QueryRow(ctx,
+		`select response is null, response_bytes from vendor_calls where request_id = $1 and operation = 'bad-json'`, reqID).Scan(&respNull, &respBytes))
+	assert.True(t, respNull, "response with a \\u0000 escape is stored as null")
+	assert.Equal(t, len(`{"a":"\u0000"}`), respBytes, "response_bytes still set")
+
+	var key, errText string
+	require.NoError(t, pool.QueryRow(ctx, `select cache_key from vendor_calls where request_id = $1 and operation = 'bad-utf8'`, reqID).Scan(&key))
+	require.NoError(t, pool.QueryRow(ctx, `select error from vendor_calls where request_id = $1 and operation = 'bad-nul'`, reqID).Scan(&errText))
+	assert.NotContains(t, key, "\xff")
+	assert.NotContains(t, errText, "\x00")
+}

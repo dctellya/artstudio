@@ -20,3 +20,6 @@ Required API: see message to lead.
 
 ## 2026-10-14T17:00:57Z lint fix
 Lead request: added //nolint:gosec on the deliberate TLS 1.2 dial (tlsconf_test.go:91). golangci-lint on ./internal/tlsconf/...: see commit; tlsconf tests run.
+
+## 2026-10-14T17:04:06Z bad-row test
+Lead request (review BLOCKING): added TestBadRowDoesNotLoseBatch (integration). Postgres d-pg2 on 127.0.0.1:55433 left running. Red against f5c8de7: expected 4 rows, actual 0 (whole CopyFrom batch lost).
