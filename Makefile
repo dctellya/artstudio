@@ -11,6 +11,7 @@ GITLEAKS      := zricethezav/gitleaks:v8.30.1
 HADOLINT      := hadolint/hadolint:v2.15.1
 VACUUM        := dshanley/vacuum:v0.33.0
 FAULT         ?=
+COMPOSE_FILES := -f compose.yaml $(if $(wildcard compose.obs.yaml),-f compose.obs.yaml)
 
 export VERSION COMMIT BUILD_DATE
 
@@ -39,10 +40,10 @@ test-acceptance-stop:
 
 up: certs
 	@test -f .env || { echo "missing .env: cp .env.example .env"; exit 1; }
-	$(COMPOSE) up -d --build --wait
+	$(COMPOSE) $(COMPOSE_FILES) up -d --build --wait
 
 down:
-	$(COMPOSE) down
+	$(COMPOSE) $(COMPOSE_FILES) down
 
 vet:
 	go vet ./...
@@ -77,8 +78,6 @@ decisions:
 	  echo "- [$$t]($$f)"; \
 	done; } > DECISIONS.md
 	@echo "wrote DECISIONS.md"
-
-COMPOSE_FILES := -f compose.yaml $(if $(wildcard compose.obs.yaml),-f compose.obs.yaml)
 
 chaos-up: certs
 	UPSTREAM_BASE_URL=http://stub:8080/api/v1 CACHE_TTL_SEARCH=1s CACHE_TTL_ARTWORK=1s $(COMPOSE) $(COMPOSE_FILES) --profile chaos up -d --build
