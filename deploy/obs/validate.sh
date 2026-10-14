@@ -6,9 +6,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
-# Test-only tool images. Override to pin; defaults follow the latest release.
-PROMTOOL_IMAGE="${PROMTOOL_IMAGE:-prom/prometheus:latest}"
-YQ_IMAGE="${YQ_IMAGE:-mikefarah/yq:latest}"
+# Test-only tool images, pinned (verified 2026-10-14). Override via env.
+PROMTOOL_IMAGE="${PROMTOOL_IMAGE:-prom/prometheus:v3.15.0}"
+YQ_IMAGE="${YQ_IMAGE:-mikefarah/yq:4.54.1}"
 ALLOY_IMAGE="${ALLOY_IMAGE:-grafana/alloy:v1.20.1}"
 
 OBS_DIR=deploy/obs

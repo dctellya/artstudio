@@ -89,3 +89,5 @@ CODER must produce:
 - deploy/obs/alloy/config.alloy; deploy/obs/rules/*.yml (recording + alert rules, runbook_url .../README.md#anchor); deploy/obs/grafana/dashboards/*.json; deploy/obs/grafana/provisioning/datasources/*.yml or *.yaml (top-level `datasources:` list, uids exactly loki, tempo, mimir); a dashboards provider yaml under deploy/obs/grafana/provisioning/dashboards/.
 - Loki must index service_name="artstudio" and expose request_id/trace_id as structured metadata (OTLP) or in a JSON line; Grafana's proxy must reach Loki at /loki/api/v1/query_range and Tempo at /api/traces/<id>.
 - Makefile wiring (team C): obs-validate -> `bash deploy/obs/validate.sh`; test-obs -> `go test -tags obs -count=1 ./test/obs/...` with GRAFANA_ADMIN_PASSWORD exported.
+
+## 2026-10-14T17:01:48Z pinned test-only images in validate.sh (lead request): prom/prometheus:v3.15.0, mikefarah/yq:4.54.1 (no :latest); env overrides kept.
