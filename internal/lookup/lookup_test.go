@@ -281,3 +281,61 @@ func TestOneAuditRecordPerVendorCallNoneOnHit(t *testing.T) {
 	assert.Equal(t, "artwork", recs[1].Operation)
 	assert.Equal(t, cache.ArtworkKey(art.ID), recs[1].CacheKey)
 }
+
+// A caller that cancels must not fail the others waiting on the same flight.
+func TestCancelledLeaderDoesNotFailFollowers(t *testing.T) {
+	r := newRig(t)
+	release := make(chan struct{})
+	entered := make(chan struct{}, 10)
+	vendor := &blockingVendor{fakeVendor: r.v, release: release, entered: entered}
+	svc := lookup.New(vendor, r.c, r.a, config.Config{CacheTTLSearch: 10 * time.Second}, prometheus.NewRegistry())
+
+	ctx1, cancel1 := context.WithCancel(r.ctx)
+	type out struct {
+		res ports.SearchResult
+		err error
+	}
+	first, second := make(chan out, 1), make(chan out, 1)
+	go func() { res, _, err := svc.Search(ctx1, sq); first <- out{res, err} }()
+	<-entered // caller 1 is the flight leader, blocked in the vendor
+	go func() { res, _, err := svc.Search(r.ctx, sq); second <- out{res, err} }()
+	time.Sleep(100 * time.Millisecond) // caller 2 joins the same flight
+
+	cancel1()
+	select {
+	case o := <-first:
+		require.Error(t, o.err, "cancelled caller gets a ctx error")
+		assert.ErrorIs(t, o.err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("cancelled caller did not return promptly")
+	}
+	close(release)
+	select {
+	case o := <-second:
+		require.NoError(t, o.err, "follower must not inherit the leader's cancellation")
+		assert.Equal(t, sres, o.res)
+	case <-time.After(2 * time.Second):
+		t.Fatal("follower never returned")
+	}
+	assert.Equal(t, 1, vendor.calls(), "one vendor call for both callers")
+}
+
+// blockingVendor blocks Search until released or the caller's ctx is done.
+type blockingVendor struct {
+	*fakeVendor
+	release chan struct{}
+	entered chan struct{}
+}
+
+func (b *blockingVendor) Search(ctx context.Context, _ ports.SearchQuery) (ports.SearchResult, ports.Call, error) {
+	b.mu.Lock()
+	b.searchN++
+	b.mu.Unlock()
+	b.entered <- struct{}{}
+	select {
+	case <-b.release:
+		return sres, goodCal, nil
+	case <-ctx.Done():
+		return ports.SearchResult{}, ports.Call{Operation: "search", Err: ctx.Err()}, ctx.Err()
+	}
+}
