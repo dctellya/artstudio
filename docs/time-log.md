@@ -23,3 +23,9 @@ Box: 90 minutes, t0 = 2026-10-14T16:36Z (F-002). Times from `date -u`.
 | 17:10 | +34 | A merged (PR #4) |
 | 17:11 | +35 | B merged (PR #5) — G2 done (target +55) |
 | 17:17 | +41 | wiring green on curls; acceptance merge running; A metrics-init fix |
+| 17:25 | +49 | stop + chaos acceptance PASS; 2 integration fixes (B, D); C reviewer spawned |
+| 17:25 | +49 | B (PR #9) and D (PR #10) integration fixes merged |
+| 17:30 | +54 | C acceptance all green (default/stop/chaos), make ci 0; review fix round for 3 blocking |
+| 17:33 | +57 | G3: C gate green (acceptance 12/12, stop, chaos); PR #11 opened |
+| 17:35 | +59 | first CI run green (test 1m55s, build 1m02s, scan 55s); C merged |
+| 17:37 | +61 | G4: README gate from clean clone passes (2 README defects fixed) |

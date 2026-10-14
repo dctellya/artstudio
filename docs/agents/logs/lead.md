@@ -41,3 +41,12 @@ Team A merged (PR #4): unit + integration green, lint 0, blocking (singleflight 
 
 ## 2026-10-14T17:23:07Z — lead
 README rewritten per README-SKELETON reflecting merged state (A, B, D); status note for pending wiring/CI/obs; will update at every merge.
+
+## 2026-10-14T17:27:00Z — human
+"how is E-team doing?"
+
+## 2026-10-14T17:28:14Z — human
+"what is pending from phase 1"
+
+## 2026-10-14T17:37:32Z — lead → human
+C merged (PR #11) after first CI run green. README gate from a clean clone passed; README defects fixed (version via make, pgdata password). G4 at +61.
