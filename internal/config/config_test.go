@@ -79,3 +79,13 @@ func TestRedaction(t *testing.T) {
 		require.True(t, strings.Contains(s, Redacted))
 	}
 }
+
+func TestOTLPEndpointHTTPSOnly(t *testing.T) {
+	load := func(ep string) error {
+		_, err := LoadFrom(env(map[string]string{"CONTACT_EMAIL": "a@b.io", "OTEL_EXPORTER_OTLP_ENDPOINT": ep}))
+		return err
+	}
+	require.Error(t, load("http://alloy:4318"))
+	require.NoError(t, load("https://alloy:4318"))
+	require.NoError(t, load(""))
+}

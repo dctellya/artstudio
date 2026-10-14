@@ -19,3 +19,6 @@ See final message of the tester; summary:
 - TestHealthcheckSubcommand: compose exec api /artstudio healthcheck.
 - TestChaosBreakerOpenThenStale (ACCEPTANCE_CHAOS=1), TestGracefulStopExitsZero (ACCEPTANCE_STOP=1).
 - Production requirements: chaos-up must set CACHE_TTL_SEARCH=1s; logs must contain JSON msg "shutdown" or "draining" and msg "audit flushed"; /ready vendor detail key "breaker" = "open"; stub binary /stubserver ctl 503|clear; api service healthcheck status reported by docker inspect.
+
+## 2026-10-14T17:29:53Z follow-up: tests for review findings 2-4
+Merged main. Added TestOTLPEndpointHTTPSOnly (internal/config), cmd/artstudio/telemetry_test.go (TestSetupTelemetryOTLPPaths, drives setupTelemetry(ctx, config.Config) from team-c/phase-1; red there: server saw only "/" instead of /v1/logs and /v1/traces), and checks.config required in TestReadyVendorNeverBlocks. telemetry.go is not on this branch so the package test only compiles once the coder branch is merged.
