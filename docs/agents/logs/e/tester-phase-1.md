@@ -93,3 +93,5 @@ CODER must produce:
 ## 2026-10-14T17:01:48Z pinned test-only images in validate.sh (lead request): prom/prometheus:v3.15.0, mikefarah/yq:4.54.1 (no :latest); env overrides kept.
 
 ## 2026-10-14T17:10:01Z validate.sh section 5 extended for review blockers (loki derived field matcherType label + regex trace_id; tempo tracesToLogsV2 customQuery + query with service_name/trace_id; compose required GRAFANA_ADMIN_PASSWORD; alloy otlp receiver min_version TLS13). Red against c4832a6: 5 FAIL lines (one per assertion; step 5 reported as 1 failed check); steps 1-3,6,7 pass.
+
+## 2026-10-14T17:48:38Z validate.sh: Alloy TLS check now requires min_version = "1.3" (Alloy v1.20.1 rejects TLS13/TLS1.3); anything else, including lower versions, fails. Run on 4644477: "obs-validate: all checks passed".

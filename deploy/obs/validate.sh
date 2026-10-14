@@ -221,8 +221,8 @@ if os.path.exists(cf):
 ac = "deploy/obs/alloy/config.alloy"
 if os.path.exists(ac):
     m = re.search(r'^otelcol\.receiver\.otlp\b.*?^}', open(ac).read(), re.S | re.M)
-    if not m or not re.search(r'tls\s*\{[^}]*min_version\s*=\s*"TLS13"', m.group(0)):
-        err('%s: otelcol.receiver.otlp tls block must set min_version = "TLS13"' % ac)
+    if not m or not re.search(r'tls\s*\{[^}]*min_version\s*=\s*"1\.3"', m.group(0)):
+        err('%s: otelcol.receiver.otlp tls block must set min_version = "1.3" (Alloy syntax)' % ac)
 
 for e in errs:
     print("FAIL: " + e, file=sys.stderr)
