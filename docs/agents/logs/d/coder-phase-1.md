@@ -22,3 +22,6 @@ go vet ./... exit 0. golangci-lint: 1 issue (gosec G402, tlsconf_test.go:91, a t
 ## 2026-10-14T17:05:14Z fix: sanitise audit rows (review finding 1, B-002, B-003)
 internal/audit/sink.go: text fields cleaned (NUL removed, invalid UTF-8 replaced); response stored only if json.Valid, utf8.Valid and no \u0000 escape, response_bytes kept. audit.go: w.cancel() on clean Close; slog.Warn on failed batch with sqlstate and batch_size (no DSN). Note: d-pg2 was stopped once by mistake mid-run and restarted on 55433 before the final runs.
 Results: integration 11 tests pass incl. TestBadRowDoesNotLoseBatch (ok internal/audit 5.290s); unit ok audit/tlsconf/stubserver; golangci-lint 0 issues; d-pg2 stopped.
+
+## 2026-10-14T17:24:45Z fix: export audit_writes_total from start (branch team-d/metrics-init)
+Pre-initialised result=ok and result=error children in NewWithSink; Noop registers nothing; other audit_* families (counter, histogram, gauge func) and db_pool_* (const-metric collector) already export from start. Added TestWritesTotalExportedFromStart (lead-approved protocol deviation). Unit tests and lint results in the final message.

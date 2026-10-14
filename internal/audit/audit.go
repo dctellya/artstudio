@@ -91,6 +91,9 @@ func NewWithSink(cfg config.Config, reg prometheus.Registerer, sink Sink) *Write
 	depth := prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 		Namespace: "artstudio", Name: "audit_queue_depth", Help: "Audit rows waiting in the queue.",
 	}, func() float64 { return float64(len(w.queue)) })
+	for _, r := range []string{"ok", "error"} { // export both children from start
+		w.writes.WithLabelValues(r)
+	}
 	reg.MustRegister(w.dropped, w.writes, w.latency, depth)
 	go w.run()
 	return w
