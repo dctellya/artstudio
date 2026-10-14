@@ -81,7 +81,8 @@ decisions:
 COMPOSE_FILES := -f compose.yaml $(if $(wildcard compose.obs.yaml),-f compose.obs.yaml)
 
 chaos-up: certs
-	UPSTREAM_BASE_URL=http://stub:8080/api/v1 CACHE_TTL_SEARCH=1s CACHE_TTL_ARTWORK=1s $(COMPOSE) $(COMPOSE_FILES) --profile chaos up -d --build --wait
+	UPSTREAM_BASE_URL=http://stub:8080/api/v1 CACHE_TTL_SEARCH=1s CACHE_TTL_ARTWORK=1s $(COMPOSE) $(COMPOSE_FILES) --profile chaos up -d --build
+	UPSTREAM_BASE_URL=http://stub:8080/api/v1 CACHE_TTL_SEARCH=1s CACHE_TTL_ARTWORK=1s $(COMPOSE) $(COMPOSE_FILES) up -d --wait api postgres
 
 chaos:
 	@test -n "$(FAULT)" || { echo "usage: make chaos FAULT=429|503|slow|timeout"; exit 1; }

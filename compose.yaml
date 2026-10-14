@@ -60,6 +60,8 @@ services:
     entrypoint: ["/stubserver"]
     environment:
       STUB_ADDR: :8080
+    healthcheck:
+      disable: true # image HEALTHCHECK targets /artstudio; a ctl probe would reset faults
     networks: [backend]
     read_only: true
     cap_drop: [ALL]
