@@ -29,3 +29,7 @@ Box: 90 minutes, t0 = 2026-10-14T16:36Z (F-002). Times from `date -u`.
 | 17:33 | +57 | G3: C gate green (acceptance 12/12, stop, chaos); PR #11 opened |
 | 17:35 | +59 | first CI run green (test 1m55s, build 1m02s, scan 55s); C merged |
 | 17:37 | +61 | G4: README gate from clean clone passes (2 README defects fixed) |
+| 17:47 | +71 | C phase 2 (image/policy CI, overlay in make up) merged PR #13 |
+| 17:49 | +73 | E live round trip green; PR #14 |
+| 17:51 | +75 | E merged (PR #14); first image job green 2m30s (multi-arch, trivy, SBOM, cosign, ghcr, anonymous pull ok) |
+| 17:53 | +77 | G5: DECISIONS.md, final reports, SPEC v1.1 as-built, README complete, tag v0.1.0 |

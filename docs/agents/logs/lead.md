@@ -50,3 +50,16 @@ README rewritten per README-SKELETON reflecting merged state (A, B, D); status n
 
 ## 2026-10-14T17:37:32Z — lead → human
 C merged (PR #11) after first CI run green. README gate from a clean clone passed; README defects fixed (version via make, pgdata password). G4 at +61.
+
+## 2026-10-14T17:41:03Z — human
+"please check that logs and traces are integrated as well as the nice dashboard of metrics"
+"once obs is merged ensure that the docker compose commands are updated to spin up all the overlays, including the obs one"
+
+## 2026-10-14T17:41:03Z — lead
+Phase 2 live check: alloy crash-loop (storage path permission) → E coder fix with full evidence (Loki lines, Tempo trace spans, Mimir series, dashboard panels, ruler). C phase 2: image/policy CI jobs + Makefile/README compose commands with the obs overlay.
+
+## 2026-10-14T17:48:02Z — human
+"how is e-team doing?"
+
+## 2026-10-14T17:52:21Z — lead → human
+E merged (PR #14); image job green; anonymous pull works (no human action needed). Final deliverables committed; tagging v0.1.0.
