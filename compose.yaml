@@ -1,0 +1,67 @@
+name: artstudio
+
+services:
+  api:
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-none}
+    image: artstudio:local
+    ports:
+      - "127.0.0.1:8443:8443"
+      - "127.0.0.1:9090:9090"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://artstudio:${POSTGRES_PASSWORD}@postgres:5432/artstudio?sslmode=disable
+      UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:-https://api.artic.edu/api/v1}
+    volumes:
+      - ./deploy/certs:/certs:ro
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "/artstudio", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend, obs]
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: artstudio
+      POSTGRES_DB: artstudio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artstudio -d artstudio"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [backend]
+    restart: unless-stopped
+
+  stub:
+    profiles: [chaos]
+    image: artstudio:local
+    entrypoint: ["/stubserver"]
+    networks: [backend]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  backend: {}
+  obs: {}
+
+volumes:
+  pgdata: {}

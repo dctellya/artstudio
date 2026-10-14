@@ -1,0 +1,21 @@
+version: "2"
+run:
+  timeout: 5m
+  build-tags:
+    - acceptance
+    - integration
+linters:
+  default: none
+  enable:
+    - gosec
+    - errcheck
+    - bodyclose
+    - govet
+    - staticcheck
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [errcheck, bodyclose]
+formatters:
+  enable:
+    - gofmt
