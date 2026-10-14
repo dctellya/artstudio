@@ -198,7 +198,7 @@ func run() error {
 	case runErr = <-errs:
 	case <-ctx.Done():
 	}
-	log.Info("shutdown: draining")
+	log.Info("draining")
 	shutCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	for _, s := range servers {
