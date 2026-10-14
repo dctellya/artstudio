@@ -33,3 +33,12 @@
 | B-029 | Tempo metrics_generator (tracesToMetrics/serviceMap have no data yet) | review E#9 | E review |
 | B-030 | Obs services: healthchecks, read_only, Alertmanager | review E#10 / coder deviations | E review |
 | B-031 | TLS on internal links (postgres, obs backends) | D-001 | lead |
+| B-032 | api container receives POSTGRES_PASSWORD/GRAFANA_ADMIN_PASSWORD via env_file; pass only what it needs | review C#6 | C review |
+| B-033 | `${POSTGRES_PASSWORD:?…}` required form in compose | review C#7 | C review |
+| B-034 | make ci vs workflow: -cover, integration step, hadolint version parity | review C#8 | C review |
+| B-035 | vacuum image uncached in CI | review C#10 | C review |
+| B-036 | CI build job passes no VERSION/COMMIT/BUILD_DATE build args | review C#11 | C review |
+| B-037 | stubserver ships in the production image; separate target | review C#12 | C review |
+| B-038 | Dockerfile `--platform=$BUILDPLATFORM` + TARGETOS/TARGETARCH for fast multi-arch | review C#13 | C review |
+| B-039 | healthcheck defaults duplicate config; 3s timeout unconfigured | review C#15 | C review |
+| B-040 | acceptance docker calls without DOCKER_DEFAULT_PLATFORM= prefix | review C#16 | C review |
