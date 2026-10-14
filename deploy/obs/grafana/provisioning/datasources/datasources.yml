@@ -16,7 +16,8 @@ datasources:
     jsonData:
       derivedFields:
         - name: trace_id
-          matcherRegex: '"trace_id":"(\w+)"'
+          matcherType: label
+          matcherRegex: trace_id
           url: '$${__value.raw}'
           datasourceUid: tempo
   - name: Tempo
@@ -28,6 +29,8 @@ datasources:
       tracesToLogsV2:
         datasourceUid: loki
         filterByTraceID: true
+        customQuery: true
+        query: '{service_name="artstudio"} | trace_id="$${__span.traceId}"'
         filterBySpanID: false
       tracesToMetrics:
         datasourceUid: mimir

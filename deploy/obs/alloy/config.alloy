@@ -7,6 +7,7 @@ otelcol.receiver.otlp "default" {
     tls {
       cert_file = "/certs/alloy.pem"
       key_file  = "/certs/alloy-key.pem"
+      min_version = "TLS13"
     }
   }
 
