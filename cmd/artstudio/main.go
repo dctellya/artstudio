@@ -164,10 +164,11 @@ func run() error {
 		prober.Run(proberCtx)
 	}()
 
-	checkers := []ports.Checker{store.Checker(), prober}
+	var dbCheck ports.Checker = disabledChecker{name: "db"}
 	if writer != nil {
-		checkers = append([]ports.Checker{writer}, checkers...)
+		dbCheck = writer
 	}
+	checkers := []ports.Checker{configChecker{}, dbCheck, store.Checker(), prober}
 	srv, err := server.New(cfg, server.Deps{
 		Lookup:   lookup.New(vendor, store, auditor, cfg, reg),
 		Checkers: checkers,

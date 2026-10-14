@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel"
@@ -20,7 +21,11 @@ import (
 	"github.com/dctellya/artstudio/internal/tlsconf"
 )
 
-const serviceNameKey = "service.name"
+const (
+	serviceNameKey = "service.name"
+	tracesPath     = "/v1/traces"
+	logsPath       = "/v1/logs"
+)
 
 // setupTelemetry wires traces and logs over OTLP/HTTPS when an endpoint is configured.
 // It returns the extra slog handler (nil when off) and a flush function.
@@ -32,15 +37,16 @@ func setupTelemetry(ctx context.Context, cfg config.Config) (slog.Handler, func(
 	if err != nil {
 		return nil, nil, fmt.Errorf("otlp tls: %w", err)
 	}
+	base := strings.TrimRight(cfg.OTLPEndpoint, "/")
 	res := resource.NewSchemaless(attribute.String(serviceNameKey, cfg.OTelServiceName))
 
-	traceExp, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(cfg.OTLPEndpoint), otlptracehttp.WithTLSClientConfig(tlsCfg))
+	traceExp, err := otlptracehttp.New(ctx, otlptracehttp.WithEndpointURL(base+tracesPath), otlptracehttp.WithTLSClientConfig(tlsCfg))
 	if err != nil {
 		return nil, nil, fmt.Errorf("otlp trace exporter: %w", err)
 	}
 	tp := sdktrace.NewTracerProvider(sdktrace.WithBatcher(traceExp), sdktrace.WithResource(res))
 
-	logExp, err := otlploghttp.New(ctx, otlploghttp.WithEndpointURL(cfg.OTLPEndpoint), otlploghttp.WithTLSClientConfig(tlsCfg))
+	logExp, err := otlploghttp.New(ctx, otlploghttp.WithEndpointURL(base+logsPath), otlploghttp.WithTLSClientConfig(tlsCfg))
 	if err != nil {
 		return nil, nil, errors.Join(fmt.Errorf("otlp log exporter: %w", err), tp.Shutdown(ctx))
 	}

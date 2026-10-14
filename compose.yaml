@@ -22,6 +22,7 @@ services:
       OTEL_EXPORTER_OTLP_CERTIFICATE: /certs/ca.pem
     volumes:
       - ./deploy/certs:/certs:ro
+    stop_grace_period: 15s
     read_only: true
     cap_drop: [ALL]
     security_opt:
