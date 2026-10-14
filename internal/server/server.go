@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
 	middleware "github.com/oapi-codegen/nethttp-middleware"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -73,12 +74,15 @@ func New(cfg config.Config, d Deps) (*Server, error) {
 			writeProblem(w, r, http.StatusBadRequest, err.Error())
 		},
 	})
+	filterOpts := openapi3filter.Options{}
+	filterOpts.WithCustomSchemaErrorFunc(func(e *openapi3.SchemaError) string { return e.Reason })
 	validate := middleware.OapiRequestValidatorWithOptions(doc, &middleware.Options{
+		Options:              filterOpts,
 		DoNotValidateServers: true,
 		ErrorHandlerWithOpts: func(_ context.Context, err error, w http.ResponseWriter, r *http.Request, o middleware.ErrorHandlerOpts) {
-			detail := err.Error()
-			if o.StatusCode != http.StatusBadRequest {
-				detail = http.StatusText(o.StatusCode)
+			detail := http.StatusText(o.StatusCode)
+			if o.StatusCode == http.StatusBadRequest {
+				detail = validationDetail(err)
 			}
 			writeProblem(w, r, o.StatusCode, detail)
 		},
@@ -117,4 +121,21 @@ func (s *Server) HTTPServer(addr string, h http.Handler, tlsCfg *tls.Config) *ht
 		WriteTimeout:      s.cfg.HTTPWriteTimeout,
 		IdleTimeout:       s.cfg.HTTPIdleTimeout,
 	}
+}
+
+const invalidParamsDetail = "invalid request parameters"
+
+// validationDetail describes a request validation failure as `parameter "<name>" <reason>`
+// from the schema reason only: raw values, schema dumps and parser text are never echoed.
+func validationDetail(err error) string {
+	var re *openapi3filter.RequestError
+	if !errors.As(err, &re) || re.Parameter == nil {
+		return invalidParamsDetail
+	}
+	reason := "is invalid"
+	var se *openapi3.SchemaError
+	if errors.As(re.Err, &se) && se.Reason != "" {
+		reason = se.Reason
+	}
+	return fmt.Sprintf("parameter %q %s", re.Parameter.Name, reason)
 }

@@ -16,3 +16,11 @@ Test result: all pass except TestErrorMapping/retry-after_on_rate_limited (2 sub
 - spec servers: url "/" (an absolute server URL made the tests' legacy router reject test requests).
 - Retry-After default when the error has none: BreakerOpenTimeout for breaker-open, UpstreamLimiterMaxWait otherwise, 1s for shedding.
 - golangci-lint reports G101 in the tester's server_test.go:68 (const secret); not touched.
+
+## 2026-10-14T17:09:56Z review fix: 400 problems carry no internal error text
+Lead instruction: fix blocking finding 1 (err.Error() leaked kin-openapi Schema/Value and strconv text into 400 details). Changes in internal/server/server.go: custom schema error func (SchemaError.Reason only) via middleware Options; detail built as `parameter "<name>" <reason>` (generic "is invalid" when not a schema error; "invalid request parameters" when no parameter); the generated binding ErrorHandlerFunc writes the fixed text "invalid request parameters". go vet clean; go test -race -count=1 ./internal/server/... ok; golangci-lint clean.
+
+Deviations accepted for the lead's decision files:
+1. /docs/{file} is part of the contract: Swagger UI assets must be routable through the request validator (it 404s paths not in the spec).
+2. spec servers is url "/": an absolute server URL made the kin-openapi legacy router used by the contract test reject every test request; the server's validator also runs with DoNotValidateServers.
+3. Retry-After defaults when an error carries none: BreakerOpenTimeout for breaker-open, UpstreamLimiterMaxWait for bulkhead/limiter/rate-limited, 1s (header granularity) for load shedding.
