@@ -13,9 +13,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# runs-on is pinned to ubuntu-24.04 on purpose (ubuntu-latest drifts to Ubuntu 26
+# on 2026-10-19); bump it deliberately, not silently.
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:18.6-alpine
@@ -49,7 +51,7 @@ jobs:
         run: go test -race -count=1 -tags integration -run 'Integration|TestMigrateIdempotent|TestBatchInsertLandsRows|TestPoolMetricsRegistered|TestBadRowDoesNotLoseBatch|TestVendorFault' ./internal/...
 
   scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
       - name: gitleaks
@@ -57,12 +59,13 @@ jobs:
       - uses: golang/govulncheck-action@v1.1.0
         with:
           go-version-file: go.mod
+          go-version-input: ''
       - uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: Dockerfile
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: docker/setup-buildx-action@v4.4.1
@@ -76,7 +79,7 @@ jobs:
   image:
     needs: [test, scan, build]
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
@@ -148,7 +151,7 @@ jobs:
           docker pull "$REF"
 
   policy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
       # checkov 3.3.29 has no docker_compose framework: compose.yaml is not
