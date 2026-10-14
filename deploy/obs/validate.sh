@@ -179,11 +179,18 @@ for uid, typ in (("loki", "loki"), ("tempo", "tempo"), ("mimir", "prometheus")):
         err("datasource %r must be type %r" % (uid, typ))
 loki, tempo = dss.get("loki", {}), dss.get("tempo", {})
 dfs = (loki.get("jsonData") or {}).get("derivedFields") or []
-if not any(d.get("datasourceUid") == "tempo" and "trace_id" in str(d.get("matcherRegex", "")) + str(d.get("matcherType", "")) + str(d.get("name", "")).lower() for d in dfs):
-    err("loki datasource: need a derivedFields entry on trace_id with datasourceUid: tempo")
+# otelslog over OTLP puts trace_id in structured metadata, not in the line body.
+if not any(d.get("datasourceUid") == "tempo" and d.get("matcherType") == "label" and d.get("matcherRegex") == "trace_id" for d in dfs):
+    err("loki datasource: need a derivedFields entry with matcherType: label, matcherRegex: trace_id, datasourceUid: tempo")
 tj = tempo.get("jsonData") or {}
-if (tj.get("tracesToLogsV2") or {}).get("datasourceUid") != "loki":
+tl = tj.get("tracesToLogsV2") or {}
+if tl.get("datasourceUid") != "loki":
     err("tempo datasource: jsonData.tracesToLogsV2.datasourceUid must be loki")
+tq = str(tl.get("query", "")).replace("$${", "${")
+if tl.get("customQuery") is not True:
+    err("tempo datasource: tracesToLogsV2.customQuery must be true")
+if 'service_name="artstudio"' not in tq or 'trace_id="${__span.traceId}"' not in tq:
+    err("tempo datasource: tracesToLogsV2.query must contain service_name=\"artstudio\" and trace_id=\"${__span.traceId}\" (YAML: $${__span.traceId}), got %r" % tl.get("query"))
 if (tj.get("tracesToMetrics") or {}).get("datasourceUid") != "mimir":
     err("tempo datasource: jsonData.tracesToMetrics.datasourceUid must be mimir")
 
@@ -200,6 +207,22 @@ if os.path.exists(cf):
         for p in s.get("ports") or []:
             if not (name == "grafana" and str(p) in ("127.0.0.1:3000:3000", "127.0.0.1:3000:3000/tcp")):
                 err("compose.obs.yaml: service %s publishes %r; only grafana 127.0.0.1:3000:3000 is allowed" % (name, p))
+
+# grafana admin password must be a required variable
+if os.path.exists(cf):
+    env = (svcs.get("grafana") or {}).get("environment") or {}
+    if isinstance(env, list):
+        env = dict(x.split("=", 1) for x in env if "=" in x)
+    pw = str(env.get("GF_SECURITY_ADMIN_PASSWORD", ""))
+    if not pw.startswith("${GRAFANA_ADMIN_PASSWORD:?"):
+        err("compose.obs.yaml: GF_SECURITY_ADMIN_PASSWORD must use the required form ${GRAFANA_ADMIN_PASSWORD:?...}, got %r" % pw)
+
+# alloy otlp receiver TLS 1.3
+ac = "deploy/obs/alloy/config.alloy"
+if os.path.exists(ac):
+    m = re.search(r'^otelcol\.receiver\.otlp\b.*?^}', open(ac).read(), re.S | re.M)
+    if not m or not re.search(r'tls\s*\{[^}]*min_version\s*=\s*"TLS13"', m.group(0)):
+        err('%s: otelcol.receiver.otlp tls block must set min_version = "TLS13"' % ac)
 
 for e in errs:
     print("FAIL: " + e, file=sys.stderr)

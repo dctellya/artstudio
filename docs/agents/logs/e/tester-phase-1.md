@@ -91,3 +91,5 @@ CODER must produce:
 - Makefile wiring (team C): obs-validate -> `bash deploy/obs/validate.sh`; test-obs -> `go test -tags obs -count=1 ./test/obs/...` with GRAFANA_ADMIN_PASSWORD exported.
 
 ## 2026-10-14T17:01:48Z pinned test-only images in validate.sh (lead request): prom/prometheus:v3.15.0, mikefarah/yq:4.54.1 (no :latest); env overrides kept.
+
+## 2026-10-14T17:10:01Z validate.sh section 5 extended for review blockers (loki derived field matcherType label + regex trace_id; tempo tracesToLogsV2 customQuery + query with service_name/trace_id; compose required GRAFANA_ADMIN_PASSWORD; alloy otlp receiver min_version TLS13). Red against c4832a6: 5 FAIL lines (one per assertion; step 5 reported as 1 failed check); steps 1-3,6,7 pass.
