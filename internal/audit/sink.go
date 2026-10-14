@@ -1,10 +1,13 @@
 package audit
 
 import (
+	"bytes"
 	"context"
 	_ "embed" // migration SQL
 	"encoding/json"
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -42,15 +45,27 @@ func (s pgSink) Insert(ctx context.Context, batch []ports.VendorCall) error {
 	rows := make([][]any, len(batch))
 	for i, c := range batch {
 		var resp any
-		if json.Valid(c.Response) {
+		if storableJSON(c.Response) {
 			resp = c.Response
 		}
 		rows[i] = []any{
-			c.TS, c.RequestID, c.TraceID, c.Operation, c.CacheKey, string(c.CacheStatus),
-			c.UpstreamStatus, c.Attempts, c.LatencyMS, c.Breaker, c.Error,
+			c.TS, clean(c.RequestID), clean(c.TraceID), clean(c.Operation), clean(c.CacheKey), clean(string(c.CacheStatus)),
+			c.UpstreamStatus, c.Attempts, c.LatencyMS, clean(c.Breaker), clean(c.Error),
 			resp, len(c.Response),
 		}
 	}
 	_, err := s.pool.CopyFrom(ctx, pgx.Identifier{"vendor_calls"}, columns, pgx.CopyFromRows(rows))
 	return err
+}
+
+// clean makes s storable in a Postgres text column: no NUL, valid UTF-8, so one
+// hostile row cannot fail the whole batch.
+func clean(s string) string {
+	return strings.ToValidUTF8(strings.ReplaceAll(s, "\x00", ""), "\uFFFD")
+}
+
+// storableJSON reports whether b can go into a jsonb column; jsonb rejects a
+// \u0000 escape and non-UTF-8 text.
+func storableJSON(b []byte) bool {
+	return json.Valid(b) && utf8.Valid(b) && !bytes.Contains(b, []byte(`\u0000`))
 }

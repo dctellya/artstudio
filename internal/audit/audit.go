@@ -6,10 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel"
@@ -121,6 +123,7 @@ func (w *Writer) Close(ctx context.Context) error {
 	var err error
 	select {
 	case <-w.done:
+		w.cancel()
 	case <-ctx.Done():
 		w.cancel()
 		<-w.done
@@ -186,6 +189,12 @@ func (w *Writer) write(batch []ports.VendorCall) {
 	w.latency.Observe(time.Since(start).Seconds())
 	if err != nil {
 		span.SetStatus(codes.Error, "insert failed")
+		state := ""
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			state = pgErr.Code
+		}
+		slog.WarnContext(ctx, "audit batch insert failed", "sqlstate", state, "batch_size", len(batch))
 		w.writes.WithLabelValues("error").Inc()
 		return
 	}
