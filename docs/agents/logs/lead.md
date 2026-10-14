@@ -32,3 +32,12 @@ Team A merged (PR #4): unit + integration green, lint 0, blocking (singleflight 
 
 ## 2026-10-14T17:14:50Z — human
 "status please?"
+
+## 2026-10-14T17:21:03Z — human
+"status please? - what is pending, what we got?"
+
+## 2026-10-14T17:23:07Z — human
+"make sure the readme is up to date - please update it as PRs arrive"
+
+## 2026-10-14T17:23:07Z — lead
+README rewritten per README-SKELETON reflecting merged state (A, B, D); status note for pending wiring/CI/obs; will update at every merge.
