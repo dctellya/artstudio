@@ -17,3 +17,6 @@ audit integration: TestMigrateIdempotent, TestBatchInsertLandsRows (25 rows via 
 tlsconf: TestServerMinTLS13, TestServerBadFiles, TestClientTrustsOnlyGivenCA (RootCAs has exactly 1 subject, no InsecureSkipVerify, other-CA server rejected with UnknownAuthorityError), TestClientBadCAFile, TestHSTSHeader.
 stub: TestServesSearchFixture, TestServesArtworkFixtureAndUnknown404, TestProbeEndpoint, TestCtl429SendsRetryAfter, TestCtl503, TestCtlSlowConfigurableDelay, TestCtlSlowDefaultJustOverTwoSeconds, TestCtlTimeoutHangsUntilClientGivesUp, TestCtlClearRestoresService.
 Required API: see message to lead.
+
+## 2026-10-14T17:00:57Z lint fix
+Lead request: added //nolint:gosec on the deliberate TLS 1.2 dial (tlsconf_test.go:91). golangci-lint on ./internal/tlsconf/...: see commit; tlsconf tests run.

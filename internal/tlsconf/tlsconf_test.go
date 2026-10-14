@@ -88,7 +88,7 @@ func TestServerMinTLS13(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, pool.AppendCertsFromPEM(pem))
 
-	_, err = tls.Dial("tcp", srv.Listener.Addr().String(), &tls.Config{RootCAs: pool, ServerName: "localhost", MaxVersion: tls.VersionTLS12})
+	_, err = tls.Dial("tcp", srv.Listener.Addr().String(), &tls.Config{RootCAs: pool, ServerName: "localhost", MaxVersion: tls.VersionTLS12}) //nolint:gosec // deliberate TLS 1.2 client to prove the server rejects it
 	assert.Error(t, err, "a TLS 1.2-only client must be rejected")
 
 	conn, err := tls.Dial("tcp", srv.Listener.Addr().String(), &tls.Config{RootCAs: pool, ServerName: "localhost", MinVersion: tls.VersionTLS13})
