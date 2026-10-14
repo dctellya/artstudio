@@ -23,10 +23,10 @@ Docker with Compose v2, Go 1.27.2, make, curl.
 git clone https://github.com/dctellya/artstudio && cd artstudio
 cp .env.example .env    # set CONTACT_EMAIL and GRAFANA_ADMIN_PASSWORD
 make certs              # local CA + TLS certs in deploy/certs
-DOCKER_DEFAULT_PLATFORM= docker compose up -d --build --wait
+DOCKER_DEFAULT_PLATFORM= docker compose -f compose.yaml -f compose.obs.yaml up -d --build --wait
 ```
 
-`DOCKER_DEFAULT_PLATFORM=` forces a native build; harmless if the variable is not set, required if your shell sets it (Go's TLS under emulation breaks the handshake).
+`compose.obs.yaml` is an overlay on `compose.yaml` (Alloy, Mimir, Tempo, Loki, Grafana), so both files are needed, in that order; `make up` runs the same command and stamps version, commit and build date. `DOCKER_DEFAULT_PLATFORM=` forces a native build; harmless if the variable is not set, required if your shell sets it (Go's TLS under emulation breaks the handshake).
 
 
 Everything is HTTPS on loopback, signed by the local CA:
@@ -35,7 +35,7 @@ Everything is HTTPS on loopback, signed by the local CA:
 |---|---|
 | API | https://api.127.0.0.1.nip.io:8443 (or https://localhost:8443) |
 | Metrics | https://api.127.0.0.1.nip.io:9090/metrics (or https://localhost:9090/metrics) |
-| Grafana (with the obs overlay, phase 2) | https://grafana.127.0.0.1.nip.io:3000 (or https://localhost:3000) |
+| Grafana | https://grafana.127.0.0.1.nip.io:3000 (or https://localhost:3000) |
 
 ## Try it
 
@@ -71,6 +71,7 @@ One command per claim. `CA` and `API` as above.
 | Graceful shutdown | `docker compose stop api` then `docker compose logs api \| tail` → `draining` and `audit flushed` lines, exit 0 (`docker inspect -f '{{.State.ExitCode}}' $(docker compose ps -aq api)`) |
 | Load shedding | `artstudio_http_shed_total` in metrics (needs a load tool to trigger; the unit test covers it) |
 | TLS only | `curl -s http://localhost:8443/health` gets no service (400 "HTTP request to an HTTPS server"); `curl --cacert "$CA" https://localhost:8443/health` works; `openssl s_client -connect localhost:8443 -tls1_2 </dev/null` is refused |
+| Logs ↔ traces | `GRAFANA_ADMIN_PASSWORD=... make test-obs`; in Grafana, a Loki line's `trace_id` opens Tempo and a span's "Logs for this span" opens Loki |
 | SLOs and alerts | Grafana → Alerting → rules: the burn-rate and breaker alerts with their runbook links to this README |
 
 ### Chaos profile
@@ -105,8 +106,6 @@ Pool and audit-queue metrics are on the metrics endpoint as `artstudio_db_pool_*
 
 ## Observability
 
-Requires the overlay (phase 2): `DOCKER_DEFAULT_PLATFORM= docker compose -f compose.yaml -f compose.obs.yaml up -d --build --wait` — both files, in that order.
-
 Generate some traffic:
 
 ```sh
@@ -117,13 +116,13 @@ Open https://grafana.127.0.0.1.nip.io:3000 and log in as `admin` with `GRAFANA_A
 
 - **Dashboards → artstudio**: service, vendor, cache, SLO and audit rows.
 - **Traces**: Explore → Tempo → Search, service name `artstudio`. A trace shows the request, the cache lookup, each vendor attempt (attempt number and status) and the audit write.
-- **Logs**: Explore → Loki → `{service_name="artstudio"}`. Each line carries `request_id`, `trace_id` and `span_id`. To follow one request: `{service_name="artstudio"} | request_id="<id>"` with the id from the response's `X-Request-ID`.
+- **Logs**: Explore → Loki → `{service_name="artstudio"}`. Each line carries `request_id`, `trace_id` and `span_id` as structured metadata (logs travel over OTLP, no docker socket). To follow one request: `{service_name="artstudio"} | request_id="<id>"` with the id from the response's `X-Request-ID`.
 - **From logs to traces and back**: in a log line, the `trace_id` field is a link that opens the trace in Tempo; in a trace, "Logs for this span" opens Loki filtered by that `trace_id`.
 
 ## Stop
 
 ```sh
-docker compose down       # add -v to delete the data volumes
+docker compose -f compose.yaml -f compose.obs.yaml down       # add -v to delete the data volumes
 ```
 
 ## Tests
@@ -133,6 +132,8 @@ make test               # unit and contract tests, no containers
 make test-acceptance    # end-to-end checks against the running stack (12 checks; chaos and stop below)
 make test-acceptance-stop                 # graceful stop: SIGTERM → draining → audit flushed → exit 0
 make chaos-up && make test-acceptance-chaos   # breaker opens, stale served; needs a fresh chaos-up each run
+make obs-validate       # static checks of the obs stack: promtool rules, alloy validate, dashboard, datasources, compose
+GRAFANA_ADMIN_PASSWORD=... make test-obs   # live round trip: X-Request-ID → Loki line → trace in Tempo
 make ci                 # what CI runs: vet, lint, contract lint, tests, govulncheck, gitleaks, hadolint, image build
 ```
 
