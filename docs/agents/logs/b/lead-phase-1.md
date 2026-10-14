@@ -37,3 +37,6 @@ Custom schema error func (Reason only), fixed router error text.
 
 ## 2026-10-14T17:11:25Z — lead gate
 ok internal/server 3.910s (-count=1); vet clean; golangci-lint 0; vacuum 0 errors (30 warnings → B-015); 62e70e9/1a8e444 touch no *_test.go. Merged main (A, D) into branch: full suite ok, all 8 packages. PASS.
+
+## 2026-10-14T17:25:12Z — integration fix gate
+Coder-written regression test accepted under the box (protocol deviation, logged). Lead re-ran: internal/... ok, golangci-lint 0. Merged as PR.
