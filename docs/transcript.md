@@ -92,3 +92,19 @@ Two README edits, then close: 1) intro CI bullet: "image build and scan, SBOM, k
 ## 2026-10-14T17:57:27Z — Lead
 
 Both README edits applied. Checked live: the server-side hit p95 is 7.25 ms (20 hits, all within the 5 ms bucket), so the 72 ms figure was client-side, as the note says. Time log closed at +81. Tag v0.1.0 already points at ce74798 (pushed at 17:54); moving it means deleting and re-pushing a published tag, so the lead asks before doing that.
+
+## 2026-10-14T18:01:43Z — Human
+
+[screenshot: CI annotations — scan: "Both go-version and go-version-file inputs are specified, only go-version will be used"; scan/policy/test/build: "The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026"]
+
+## 2026-10-14T18:01:43Z — Lead
+
+Sent both to the C coder: govulncheck-action defaults go-version-input to stable (set it to '' so go.mod wins); runners pinned to ubuntu-24.04. Asked whether to keep v0.1.0 and tag v0.1.1, or move v0.1.0.
+
+## 2026-10-14T18:01:43Z — Human
+
+keep v0.1.0 and tag the final commit v0.1.1 once the CI-annotation fix merges
+
+## 2026-10-14T18:01:43Z — Lead
+
+PR #17 green with no annotations, merged. v0.1.0 stays on ce74798; v0.1.1 tags the final commit (this export is the last change before it).

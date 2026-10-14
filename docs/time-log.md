@@ -34,3 +34,4 @@ Box: 90 minutes, t0 = 2026-10-14T16:36Z (F-002). Times from `date -u`.
 | 17:51 | +75 | E merged (PR #14); first image job green 2m30s (multi-arch, trivy, SBOM, cosign, ghcr, anonymous pull ok) |
 | 17:53 | +77 | G5: DECISIONS.md, final reports, SPEC v1.1 as-built, README complete, tag v0.1.0 |
 | 17:57 | +81 | close: README edits (CI bullet, B-041 measurement note); final entry. Box closed inside 90 min; nothing after the box |
+| 18:01 | +85 | CI annotations fixed (govulncheck uses go.mod, runner pinned ubuntu-24.04), PR #17 green with no annotations; tag v0.1.1 |

@@ -69,3 +69,10 @@ Two README edits, then close: 1) intro CI bullet: "image build and scan, SBOM, k
 
 ## 2026-10-14T17:57:27Z — lead
 Both README edits applied; checked the server-side SLI live: hit p95 from artstudio_http_request_duration_seconds = 7.25 ms (20 hits, all in the 5 ms bucket), consistent with the note. Time log closed at +81. Tag v0.1.0 already exists on ce74798 (pushed 17:54); moving a pushed tag rewrites history, so asking before doing it.
+
+## 2026-10-14T18:01:43Z — human
+[screenshot of CI annotations: go-version warning in scan; ubuntu-latest migration notices]
+"keep v0.1.0 and tag the final commit v0.1.1 once the CI-annotation fix merges"
+
+## 2026-10-14T18:01:43Z — lead
+c82a250 (C coder): go-version-input "" with go-version-file; runs-on ubuntu-24.04 on all jobs. PR #17 CI green, annotations API returned none. Merged; v0.1.0 kept on ce74798; v0.1.1 on the final commit.
