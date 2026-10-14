@@ -1,0 +1,71 @@
+// OTLP/https in (from api) -> tempo (traces), loki (logs), mimir (metrics);
+// plus a TLS scrape of the api /metrics endpoint.
+
+otelcol.receiver.otlp "default" {
+  http {
+    endpoint = "0.0.0.0:4318"
+    tls {
+      cert_file = "/certs/alloy.pem"
+      key_file  = "/certs/alloy-key.pem"
+    }
+  }
+
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.mimir.input]
+    logs    = [otelcol.exporter.otlphttp.loki.input]
+    traces  = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+// internal obs network is plaintext
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:4317"
+    tls {
+      insecure = true
+    }
+  }
+}
+
+// Loki native OTLP: service.name -> service_name label, trace_id/span_id as structured metadata
+otelcol.exporter.otlphttp "loki" {
+  client {
+    endpoint = "http://loki:3100/otlp"
+  }
+}
+
+otelcol.exporter.otlphttp "mimir" {
+  client {
+    endpoint = "http://mimir:9009/otlp"
+  }
+}
+
+prometheus.scrape "api" {
+  targets = [{
+    "__address__" = "api:9090",
+    "service"     = "artstudio",
+  }]
+  job_name        = "artstudio"
+  scheme          = "https"
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+
+  tls_config {
+    ca_file     = "/certs/ca.pem"
+    server_name = "api"
+  }
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}

@@ -1,0 +1,59 @@
+groups:
+  - name: artstudio-slo-recording
+    interval: 30s
+    rules:
+      # Non-5xx ratio. Stale-served responses are 2xx, so they count as success.
+      - record: artstudio:http_availability:ratio_rate5m
+        expr: 1 - (sum(rate(artstudio_http_requests_total{code=~"5.."}[5m])) or vector(0)) / sum(rate(artstudio_http_requests_total[5m]))
+      - record: artstudio:http_availability:ratio_rate30m
+        expr: 1 - (sum(rate(artstudio_http_requests_total{code=~"5.."}[30m])) or vector(0)) / sum(rate(artstudio_http_requests_total[30m]))
+      - record: artstudio:http_availability:ratio_rate1h
+        expr: 1 - (sum(rate(artstudio_http_requests_total{code=~"5.."}[1h])) or vector(0)) / sum(rate(artstudio_http_requests_total[1h]))
+      - record: artstudio:http_availability:ratio_rate6h
+        expr: 1 - (sum(rate(artstudio_http_requests_total{code=~"5.."}[6h])) or vector(0)) / sum(rate(artstudio_http_requests_total[6h]))
+      - record: artstudio:http_availability:ratio_rate30d
+        expr: 1 - (sum(rate(artstudio_http_requests_total{code=~"5.."}[30d])) or vector(0)) / sum(rate(artstudio_http_requests_total[30d]))
+      - record: artstudio:http_latency_p95:cache_rate5m
+        expr: histogram_quantile(0.95, sum by (le, cache) (rate(artstudio_http_request_duration_seconds_bucket[5m])))
+
+  - name: artstudio-alerts
+    rules:
+      - alert: ArtstudioErrorBudgetFastBurn
+        expr: (1 - artstudio:http_availability:ratio_rate1h) > (14.4 * 0.001) and (1 - artstudio:http_availability:ratio_rate5m) > (14.4 * 0.001)
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "Fast burn of the 99.9% / 30d availability budget (14.4x)"
+          runbook_url: https://github.com/dctellya/artstudio/blob/main/README.md#runbook-fast-burn
+      - alert: ArtstudioErrorBudgetSlowBurn
+        expr: (1 - artstudio:http_availability:ratio_rate6h) > (6 * 0.001) and (1 - artstudio:http_availability:ratio_rate30m) > (6 * 0.001)
+        for: 15m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Slow burn of the 99.9% / 30d availability budget (6x)"
+          runbook_url: https://github.com/dctellya/artstudio/blob/main/README.md#runbook-slow-burn
+      - alert: ArtstudioUpstreamBreakerOpen
+        expr: max(artstudio_upstream_breaker_state) == 2
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Vendor circuit breaker open for more than 5 minutes"
+          runbook_url: https://github.com/dctellya/artstudio/blob/main/README.md#runbook-breaker-open
+      - alert: ArtstudioAuditDropped
+        expr: increase(artstudio_audit_dropped_total[5m]) > 0
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Audit events are being dropped (queue full)"
+          runbook_url: https://github.com/dctellya/artstudio/blob/main/README.md#runbook-audit-dropped
+      - alert: ArtstudioVendorProbeDown
+        expr: min(artstudio_upstream_probe_up) == 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Vendor probe failing for 5 minutes"
+          runbook_url: https://github.com/dctellya/artstudio/blob/main/README.md#runbook-vendor-probe-down

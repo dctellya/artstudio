@@ -1,0 +1,99 @@
+# Observability overlay: docker compose -f compose.yaml -f compose.obs.yaml up
+services:
+  api:
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: https://alloy:4318
+    depends_on:
+      alloy:
+        condition: service_started
+
+  alloy:
+    image: grafana/alloy:v1.20.1
+    command:
+      - run
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./deploy/obs/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./deploy/certs/ca.pem:/certs/ca.pem:ro
+      - ./deploy/certs/alloy.pem:/certs/alloy.pem:ro
+      - ./deploy/certs/alloy-key.pem:/certs/alloy-key.pem:ro
+      - alloydata:/var/lib/alloy/data
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    depends_on: [mimir, tempo, loki]
+    networks: [obs]
+    restart: unless-stopped
+
+  mimir:
+    image: grafana/mimir:3.2.2
+    command: ["-config.file=/etc/mimir/mimir.yaml"]
+    volumes:
+      - ./deploy/obs/mimir/mimir.yaml:/etc/mimir/mimir.yaml:ro
+      # ruler local storage layout: <dir>/<tenant>/<rule files>; tenant is "anonymous" (multitenancy off)
+      - ./deploy/obs/rules:/etc/mimir/rules/anonymous:ro
+      - mimirdata:/data
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    networks: [obs]
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:3.1.0
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./deploy/obs/tempo/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempodata:/var/tempo
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    networks: [obs]
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.7.8
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    volumes:
+      - ./deploy/obs/loki/loki.yaml:/etc/loki/loki.yaml:ro
+      - lokidata:/loki
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    networks: [obs]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.2.4
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SERVER_PROTOCOL: https
+      GF_SERVER_CERT_FILE: /certs/grafana.pem
+      GF_SERVER_CERT_KEY: /certs/grafana-key.pem
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./deploy/certs/grafana.pem:/certs/grafana.pem:ro
+      - ./deploy/certs/grafana-key.pem:/certs/grafana-key.pem:ro
+      - ./deploy/obs/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/obs/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    depends_on: [mimir, tempo, loki]
+    networks: [obs]
+    restart: unless-stopped
+
+volumes:
+  alloydata: {}
+  mimirdata: {}
+  tempodata: {}
+  lokidata: {}
+  grafanadata: {}
