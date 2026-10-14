@@ -4,6 +4,7 @@ package cache
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -117,18 +118,25 @@ func (c *LRU) add(key string, e entry) {
 }
 
 // Do runs fn once per key among concurrent callers. shared is true for every
-// caller that waited on another caller's fn.
-func (c *LRU) Do(_ context.Context, key string, fn func() ([]byte, error)) ([]byte, bool, error) {
-	leader := false
-	v, err, _ := c.group.Do(key, func() (any, error) {
-		leader = true
+// caller that waited on another caller's fn. A caller whose ctx ends stops
+// waiting with ctx.Err(); the shared call keeps running for the others.
+func (c *LRU) Do(ctx context.Context, key string, fn func() ([]byte, error)) ([]byte, bool, error) {
+	var leader atomic.Bool
+	ch := c.group.DoChan(key, func() (any, error) {
+		leader.Store(true)
 		return fn()
 	})
-	if !leader {
-		c.dedupes.Inc()
+	select {
+	case <-ctx.Done():
+		return nil, true, ctx.Err()
+	case r := <-ch:
+		shared := !leader.Load()
+		if shared {
+			c.dedupes.Inc()
+		}
+		b, _ := r.Val.([]byte)
+		return b, shared, r.Err
 	}
-	b, _ := v.([]byte)
-	return b, !leader, err
 }
 
 // Len is the number of entries held.

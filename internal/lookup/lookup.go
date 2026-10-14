@@ -38,14 +38,14 @@ func New(v ports.Vendor, c ports.Cache, a ports.Auditor, cfg config.Config, _ pr
 func (s *Service) Search(ctx context.Context, q ports.SearchQuery) (ports.SearchResult, ports.Meta, error) {
 	q.Q = cache.NormalizeQuery(q.Q)
 	return fetch(ctx, s, cache.SearchKey(q), s.cfg.CacheTTLSearch, func() (ports.SearchResult, ports.Call, error) {
-		return s.vendor.Search(ctx, q)
+		return s.vendor.Search(context.WithoutCancel(ctx), q) // shared flight: the vendor budget bounds it, not one caller
 	})
 }
 
 // Artwork returns one artwork.
 func (s *Service) Artwork(ctx context.Context, id int) (ports.Artwork, ports.Meta, error) {
 	return fetch(ctx, s, cache.ArtworkKey(id), s.cfg.CacheTTLArtwork, func() (ports.Artwork, ports.Call, error) {
-		return s.vendor.Artwork(ctx, id)
+		return s.vendor.Artwork(context.WithoutCancel(ctx), id)
 	})
 }
 
@@ -89,6 +89,9 @@ func fetch[T any](ctx context.Context, s *Service, key string, ttl time.Duration
 		s.cache.Set(ctx, key, enc, ttl)
 		return enc, nil
 	})
+	if ctx.Err() != nil && errors.Is(err, ctx.Err()) {
+		return zero, meta, err // this caller gave up; the shared call carries on for the others
+	}
 	meta.Attempts, meta.UpstreamLatency = vc.Attempts, vc.Latency
 
 	if err == nil {
