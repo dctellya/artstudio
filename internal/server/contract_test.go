@@ -97,3 +97,18 @@ func TestContract_ResponsesValidateAgainstSchema(t *testing.T) {
 		})
 	}
 }
+
+// 400 details are human-readable only: no schema JSON, raw input or Go parser text.
+func TestBadRequestDetailLeaksNothing(t *testing.T) {
+	e := newEnv(t)
+	for _, target := range []string{"/art/monet?limit=0", "/art/monet?limit=abc", "/artworks/abc"} {
+		t.Run(target, func(t *testing.T) {
+			p := requireProblem(t, e.get(t, target), http.StatusBadRequest)
+			detail, _ := p["detail"].(string)
+			require.NotEmpty(t, detail)
+			for _, leak := range []string{"Schema:", "Value:", "strconv", "parsing"} {
+				require.NotContains(t, detail, leak)
+			}
+		})
+	}
+}

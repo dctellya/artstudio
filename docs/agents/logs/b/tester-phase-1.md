@@ -17,3 +17,6 @@ Server unit: TestErrorMapping, TestProblemNeverContainsVendorBody, TestRequestID
 
 ## 2026-10-14T17:02:59Z fixes
 RetryAfter case now uses rateLimitedRetry (Error, RetryAfter, Unwrap to ErrUpstreamRateLimited); G101 nolint on the secret sentinel. go test -race and golangci-lint run on ./internal/server/... checked.
+
+## 2026-10-14T17:06:49Z 400 detail leak test
+Added TestBadRequestDetailLeaksNothing (contract_test.go); red against current code: detail contains "Schema:" for limit=0.
