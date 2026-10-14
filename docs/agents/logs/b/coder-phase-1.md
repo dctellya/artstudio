@@ -24,3 +24,6 @@ Deviations accepted for the lead's decision files:
 1. /docs/{file} is part of the contract: Swagger UI assets must be routable through the request validator (it 404s paths not in the spec).
 2. spec servers is url "/": an absolute server URL made the kin-openapi legacy router used by the contract test reject every test request; the server's validator also runs with DoNotValidateServers.
 3. Retry-After defaults when an error carries none: BreakerOpenTimeout for breaker-open, UpstreamLimiterMaxWait for bulkhead/limiter/rate-limited, 1s (header granularity) for load shedding.
+
+## 2026-10-14T17:24:51Z integration fix: X-Cache on error responses
+Lead instruction (worktree b-fix, branch team-b/xcache-errors): the second 404 for an id lacked X-Cache. writeLookupError now takes the Meta returned with the error and sets X-Cache and Server-Timing (and the access-log/metrics cache label) when Meta.Cache is non-empty. Added TestErrorResponseCarriesXCacheFromMeta to internal/server/server_test.go (written by the coder at the lead's request; protocol deviation logged by the lead). vet clean; go test -race -count=1 ./internal/server/... ok; golangci-lint 0 issues.

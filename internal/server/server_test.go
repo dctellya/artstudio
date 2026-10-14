@@ -328,3 +328,17 @@ func newReq(target, remote string) *http.Request {
 	r.RemoteAddr = remote
 	return r
 }
+
+// Error responses carry the cache status Lookup reported alongside the error.
+func TestErrorResponseCarriesXCacheFromMeta(t *testing.T) {
+	e := newEnv(t)
+	e.lookup.err = ports.ErrNotFound
+	e.lookup.meta = ports.Meta{Cache: ports.CacheNegative, UpstreamLatency: 7 * time.Millisecond}
+	rec := e.get(t, "/artworks/5")
+	requireProblem(t, rec, http.StatusNotFound)
+	assert.Equal(t, "negative", rec.Header().Get("X-Cache"))
+	assert.Equal(t, "upstream;dur=7", rec.Header().Get("Server-Timing"))
+
+	e.lookup.meta = ports.Meta{}
+	assert.Empty(t, e.get(t, "/artworks/5").Header().Get("X-Cache"), "no cache status, no header")
+}
