@@ -265,8 +265,8 @@
             "type": "prometheus",
             "uid": "mimir"
           },
-          "expr": "histogram_quantile(0.95, sum by (le) (rate(artstudio_upstream_probe_latency_seconds_bucket[5m])))",
-          "legendFormat": "probe p95"
+          "expr": "max(artstudio_upstream_probe_latency_seconds)",
+          "legendFormat": "probe latency"
         },
         {
           "refId": "C",

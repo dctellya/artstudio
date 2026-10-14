@@ -11,7 +11,7 @@ services:
     image: grafana/alloy:v1.20.1
     command:
       - run
-      - --storage.path=/var/lib/alloy/data
+      - --storage.path=/tmp/alloy-data
       - --server.http.listen-addr=0.0.0.0:12345
       - /etc/alloy/config.alloy
     volumes:
@@ -19,7 +19,9 @@ services:
       - ./deploy/certs/ca.pem:/certs/ca.pem:ro
       - ./deploy/certs/alloy.pem:/certs/alloy.pem:ro
       - ./deploy/certs/alloy-key.pem:/certs/alloy-key.pem:ro
-      - alloydata:/var/lib/alloy/data
+    # cap_drop ALL removes DAC_OVERRIDE, so root cannot use the image's alloy-owned /var/lib/alloy; scratch storage on tmpfs
+    tmpfs:
+      - /tmp/alloy-data:mode=1777
     cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
@@ -92,7 +94,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  alloydata: {}
   mimirdata: {}
   tempodata: {}
   lokidata: {}
