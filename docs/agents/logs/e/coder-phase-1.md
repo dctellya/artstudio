@@ -13,3 +13,5 @@ Tempo 3.1.0 rejected `ingester:` and `compactor:` keys (3.x architecture); remov
 - Tempo metrics_generator skipped (optional), so tracesToMetrics/serviceMap datasources have no span metrics yet.
 - Dashboards: hit ratio panel shows rate by result (no ratio expression).
 2026-10-14T17:06:23Z final validate.sh run: exit 
+
+## 2026-10-14T17:11:04Z review fixes 1-4 applied (label derived field, tracesToLogsV2 customQuery, required GRAFANA_ADMIN_PASSWORD, alloy TLS13); merged main (merge commit); validate.sh: obs-validate: all checks passed
