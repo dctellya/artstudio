@@ -1,0 +1,450 @@
+openapi: 3.0.3
+info:
+  title: artstudio API
+  version: 0.1.0
+  description: >-
+    Read-only artwork search and lookup in front of the Art Institute of Chicago
+    public API. Responses are served cache-first; when the vendor is down a stale
+    cached copy is served with `X-Cache: stale`. Errors are RFC 9457 problem+json.
+  contact:
+    name: artstudio maintainers
+    url: https://github.com/dctellya/artstudio
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit
+servers:
+  - url: /
+    description: The serving origin
+tags:
+  - name: art
+    description: Artwork search and lookup
+  - name: ops
+    description: Liveness, readiness, version and documentation
+paths:
+  /art/{query}:
+    get:
+      tags: [art]
+      operationId: searchArt
+      summary: Search artworks
+      description: >-
+        Searches artworks by free text. `query` is 1-100 characters. `limit` is
+        1-50 (default 12) and `page` is 1-50 (default 1). The vendor only serves
+        the first 1000 results, so `limit` x `page` must not exceed 1000; a
+        larger window is rejected with 400 by the handler.
+      parameters:
+        - name: query
+          in: path
+          required: true
+          description: Free-text search, 1-100 characters.
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+          example: monet
+        - name: limit
+          in: query
+          required: false
+          description: Page size, 1-50.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 12
+        - name: page
+          in: query
+          required: false
+          description: Page number, 1-50. `limit` x `page` must not exceed 1000.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 1
+      responses:
+        '200':
+          description: One page of search results.
+          headers:
+            X-Request-ID: {$ref: '#/components/headers/XRequestID'}
+            X-Cache: {$ref: '#/components/headers/XCache'}
+            Server-Timing: {$ref: '#/components/headers/ServerTiming'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SearchResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '500': {$ref: '#/components/responses/InternalError'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+        '504': {$ref: '#/components/responses/GatewayTimeout'}
+  /artworks/{id}:
+    get:
+      tags: [art]
+      operationId: getArtwork
+      summary: Get one artwork
+      description: Returns one artwork by its numeric id (1 or greater).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Artwork id, 1 or greater.
+          schema:
+            type: integer
+            minimum: 1
+          example: 27992
+      responses:
+        '200':
+          description: The artwork.
+          headers:
+            X-Request-ID: {$ref: '#/components/headers/XRequestID'}
+            X-Cache: {$ref: '#/components/headers/XCache'}
+            Server-Timing: {$ref: '#/components/headers/ServerTiming'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ArtworkResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '500': {$ref: '#/components/responses/InternalError'}
+        '502': {$ref: '#/components/responses/BadGateway'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+        '504': {$ref: '#/components/responses/GatewayTimeout'}
+  /health:
+    get:
+      tags: [ops]
+      operationId: getHealth
+      summary: Liveness
+      description: Always 200 while the process serves requests; checks nothing.
+      responses:
+        '200':
+          description: The process is alive.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Health'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /ready:
+    get:
+      tags: [ops]
+      operationId: getReady
+      summary: Readiness
+      description: >-
+        Runs the config, db, cache and vendor checks. A failing config, db or
+        cache check gives 503; the vendor check is reported but never fails
+        readiness.
+      responses:
+        '200':
+          description: Ready to serve.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Ready'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503':
+          description: A gating dependency is down, or the server is shedding load.
+          headers:
+            Retry-After: {$ref: '#/components/headers/RetryAfter'}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Ready'}
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /version:
+    get:
+      tags: [ops]
+      operationId: getVersion
+      summary: Build information
+      description: Version, commit, Go version and build date injected at build time.
+      responses:
+        '200':
+          description: Build information.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/VersionInfo'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /openapi.yaml:
+    get:
+      tags: [ops]
+      operationId: getOpenAPI
+      summary: This specification
+      description: The OpenAPI document the server was built from.
+      responses:
+        '200':
+          description: The OpenAPI document.
+          content:
+            application/yaml:
+              schema:
+                type: string
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /docs:
+    get:
+      tags: [ops]
+      operationId: getDocs
+      summary: Swagger UI
+      description: Interactive documentation, served from embedded assets without a CDN.
+      responses:
+        '200':
+          description: The Swagger UI page.
+          content:
+            text/html:
+              schema:
+                type: string
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+  /docs/{file}:
+    get:
+      tags: [ops]
+      operationId: getDocsAsset
+      summary: Swagger UI asset
+      description: One of the embedded Swagger UI static files.
+      parameters:
+        - name: file
+          in: path
+          required: true
+          description: Asset file name.
+          schema:
+            type: string
+            enum: [swagger-ui.css, swagger-ui-bundle.js, swagger-ui-standalone-preset.js]
+      responses:
+        '200':
+          description: The static file.
+          content:
+            text/css:
+              schema:
+                type: string
+            text/javascript:
+              schema:
+                type: string
+        '404': {$ref: '#/components/responses/NotFound'}
+        '429': {$ref: '#/components/responses/TooManyRequests'}
+        '503': {$ref: '#/components/responses/Unavailable'}
+components:
+  headers:
+    XRequestID:
+      description: Request id, echoed from the request when valid, else generated.
+      schema:
+        type: string
+    XCache:
+      description: How the response was produced.
+      schema:
+        $ref: '#/components/schemas/CacheStatus'
+    ServerTiming:
+      description: Time spent calling the vendor, as `upstream;dur=<ms>`.
+      schema:
+        type: string
+    RetryAfter:
+      description: Seconds to wait before retrying.
+      schema:
+        type: integer
+        minimum: 1
+  responses:
+    BadRequest:
+      description: Invalid parameters.
+      headers:
+        X-Request-ID: {$ref: '#/components/headers/XRequestID'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    NotFound:
+      description: No such artwork or route.
+      headers:
+        X-Request-ID: {$ref: '#/components/headers/XRequestID'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    TooManyRequests:
+      description: The client exceeded its per-IP rate limit.
+      headers:
+        X-Request-ID: {$ref: '#/components/headers/XRequestID'}
+        Retry-After: {$ref: '#/components/headers/RetryAfter'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    InternalError:
+      description: Unexpected server error.
+      headers:
+        X-Request-ID: {$ref: '#/components/headers/XRequestID'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    BadGateway:
+      description: The vendor answered with an unusable response after retries.
+      headers:
+        X-Request-ID: {$ref: '#/components/headers/XRequestID'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    Unavailable:
+      description: >-
+        The vendor is unavailable (breaker open, bulkhead full, rate limited)
+        and nothing stale is cached, or the server is shedding load.
+      headers:
+        X-Request-ID: {$ref: '#/components/headers/XRequestID'}
+        Retry-After: {$ref: '#/components/headers/RetryAfter'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+    GatewayTimeout:
+      description: The vendor call exceeded its time budget.
+      headers:
+        X-Request-ID: {$ref: '#/components/headers/XRequestID'}
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+  schemas:
+    CacheStatus:
+      type: string
+      description: How the response was produced.
+      enum: [hit, miss, stale, negative, bypass]
+    Artwork:
+      type: object
+      description: One artwork.
+      required: [id, title, artist, date, image_id, image_url]
+      properties:
+        id:
+          type: integer
+          description: Vendor artwork id.
+          example: 27992
+        title:
+          type: string
+          description: Artwork title.
+          example: A Sunday on La Grande Jatte
+        artist:
+          type: string
+          description: Artist display line; empty when unknown.
+          example: Georges Seurat
+        date:
+          type: string
+          description: Display date; empty when unknown.
+          example: '1884'
+        image_id:
+          type: string
+          description: Vendor image id; empty when there is no image.
+        image_url:
+          type: string
+          nullable: true
+          description: IIIF image URL; null when the artwork has no image.
+    Pagination:
+      type: object
+      description: Position of the page in the result set.
+      required: [total, limit, page]
+      properties:
+        total:
+          type: integer
+          description: Total matching artworks.
+        limit:
+          type: integer
+          description: Page size used.
+        page:
+          type: integer
+          description: Page number returned.
+    Meta:
+      type: object
+      description: How the response was produced.
+      required: [request_id, cache, upstream_latency_ms]
+      properties:
+        request_id:
+          type: string
+          description: Request id, also in the X-Request-ID header.
+        cache:
+          $ref: '#/components/schemas/CacheStatus'
+        upstream_latency_ms:
+          type: integer
+          description: Milliseconds spent calling the vendor; 0 on a cache hit.
+    SearchResponse:
+      type: object
+      description: One page of search results.
+      required: [data, pagination, meta]
+      properties:
+        data:
+          type: array
+          description: Artworks on this page.
+          items:
+            $ref: '#/components/schemas/Artwork'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    ArtworkResponse:
+      type: object
+      description: One artwork.
+      required: [data, meta]
+      properties:
+        data:
+          $ref: '#/components/schemas/Artwork'
+        meta:
+          $ref: '#/components/schemas/Meta'
+    Health:
+      type: object
+      description: Liveness answer.
+      required: [status]
+      properties:
+        status:
+          type: string
+          description: Always `ok`.
+          enum: [ok]
+    ReadyCheck:
+      type: object
+      description: >-
+        One dependency check. Check-specific detail (for the vendor: state,
+        latency_ms, last_check, last_error, breaker) is inlined.
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          description: Whether the check passed.
+      additionalProperties: true
+    Ready:
+      type: object
+      description: Readiness answer.
+      required: [status, checks]
+      properties:
+        status:
+          type: string
+          description: '`ok` when every gating check passes, else `unavailable`.'
+          enum: [ok, unavailable]
+        checks:
+          type: object
+          description: Checks by name (config, db, cache, vendor).
+          additionalProperties:
+            $ref: '#/components/schemas/ReadyCheck'
+    VersionInfo:
+      type: object
+      description: Build information.
+      required: [version, commit, go_version, build_date]
+      properties:
+        version:
+          type: string
+          description: Release version.
+        commit:
+          type: string
+          description: Git commit.
+        go_version:
+          type: string
+          description: Go toolchain version.
+        build_date:
+          type: string
+          description: Build timestamp.
+    Problem:
+      type: object
+      description: RFC 9457 problem details. Never contains vendor text.
+      required: [type, title, status, detail, instance, request_id]
+      properties:
+        type:
+          type: string
+          description: Problem type URI reference.
+          example: about:blank
+        title:
+          type: string
+          description: Short summary of the problem class.
+        status:
+          type: integer
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Explanation specific to this occurrence.
+        instance:
+          type: string
+          description: Request path.
+        request_id:
+          type: string
+          description: Request id, also in the X-Request-ID header.
