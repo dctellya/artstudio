@@ -56,7 +56,7 @@ func (h handlers) SearchArt(w http.ResponseWriter, r *http.Request, query string
 	}
 	res, meta, err := h.s.lookup.Search(r.Context(), ports.SearchQuery{Q: normalise(query), Limit: limit, Page: page})
 	if err != nil {
-		h.s.writeLookupError(w, r, err)
+		h.s.writeLookupError(w, r, meta, err)
 		return
 	}
 	items := make([]httpapi.Artwork, len(res.Items))
@@ -74,7 +74,7 @@ func (h handlers) SearchArt(w http.ResponseWriter, r *http.Request, query string
 func (h handlers) GetArtwork(w http.ResponseWriter, r *http.Request, id int) {
 	art, meta, err := h.s.lookup.Artwork(r.Context(), id)
 	if err != nil {
-		h.s.writeLookupError(w, r, err)
+		h.s.writeLookupError(w, r, meta, err)
 		return
 	}
 	setMetaHeaders(w, r, meta)
@@ -134,7 +134,10 @@ func serveEmbedded(w http.ResponseWriter, r *http.Request, name, contentType str
 
 // writeLookupError maps ports errors to the HTTP contract (SPEC §5). The detail
 // is fixed text: the error's own text may hold a vendor payload and is never sent.
-func (s *Server) writeLookupError(w http.ResponseWriter, r *http.Request, err error) {
+func (s *Server) writeLookupError(w http.ResponseWriter, r *http.Request, meta ports.Meta, err error) {
+	if meta.Cache != "" {
+		setMetaHeaders(w, r, meta)
+	}
 	var ra ports.RetryAfterError
 	switch {
 	case errors.Is(err, ports.ErrNotFound):
