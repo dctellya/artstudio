@@ -177,3 +177,9 @@ No `needs` among light jobs; prebuilt actions only; CI never starts the obs stac
 ## 10. Evolution log
 | Phase | Merged | Shipped | Tests green | Deviations |
 |---|---|---|---|---|
+| C-0 skeleton | 16:54 PR #1, #2 | module, ports (+ request-id ctx helpers), config, gencert, TLS stub cmd, Dockerfile, compose, Makefile, acceptance suite | config unit; acceptance 5/15 | oapi-codegen as go.mod tool; USER 65532; .gitleaks.toml allowlists git-ignored certs |
+| D-1 | 17:06 PR #3 | audit writer + migration + pool metrics, tlsconf, vendor stub + ctl | audit 7+4 integ, tlsconf 5, stub | Close/ClosePool split (D-002); row sanitisation (D-003) |
+| A-1 | 17:10 PR #4 | vendor client, prober, cache, lookup | artic, cache, lookup + integration vs stub | breaker per call (D-004); detached singleflight (D-005); stale/audit scope (D-006) |
+| B-1 | 17:11 PR #5 | contract, generated router, validation, server chain, problem+json, Swagger UI | server/contract | middleware order (D-008); servers "/", /docs/{file} (D-007) |
+| fixes | 17:18–17:25 PR #7, #9, #10 | integration findings: metric families from start (A, D), X-Cache on errors (B) | regression tests in owning packages | coder-written tests, lead-accepted under the box |
+| C-1 | 17:35 PR #11 | wiring, telemetry (OTLP/https), graceful shutdown, CI (test/scan/build), acceptance suite | 9 unit packages, 5 integration, acceptance 12 + stop + chaos; first CI run green (test 1m55s cold, build 1m02s, scan 55s) | D-009..D-011; stub healthcheck off |

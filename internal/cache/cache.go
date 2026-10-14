@@ -63,6 +63,9 @@ func New(cfg config.Config, reg prometheus.Registerer, opts ...Option) *LRU {
 	}
 	f.NewGaugeFunc(prometheus.GaugeOpts{Namespace: "artstudio", Name: "cache_entries",
 		Help: "Entries currently held."}, func() float64 { return float64(items.Len()) })
+	for _, st := range []ports.CacheStatus{ports.CacheHit, ports.CacheMiss, ports.CacheStale, ports.CacheNegative} {
+		c.requests.WithLabelValues(string(st))
+	}
 	for _, o := range opts {
 		o(c)
 	}

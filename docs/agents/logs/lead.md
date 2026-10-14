@@ -17,3 +17,36 @@ Box t0 stays 16:36Z. Q2 agreed (400 when limit×page>1000, vendor 403 → 502). 
 
 ## 2026-10-14T16:46:06Z — actions
 Applied F-002..F-006 to SPEC.md (v1.0, 179 lines). Committing on branch c/skeleton; spawning the skeleton CODER (sonnet). Elapsed +10 at spawn: skeleton gate G0 will be late; reported to the human.
+
+## 2026-10-14T17:02:26Z — human
+"check c-coder as well"
+
+## 2026-10-14T17:02:26Z — lead
+Audited team-c/phase-1: vacuum image unpinned (:latest) in Makefile and ci.yml; sent back to the coder to pin v0.33.0. Same finding in E tester (prometheus, yq :latest) sent back to pin.
+
+## 2026-10-14T17:06:28Z — lead → human
+Team D merged (PR #3): unit + integration green, lint 0, blocking security finding fixed in phase.
+
+## 2026-10-14T17:10:30Z — lead → human
+Team A merged (PR #4): unit + integration green, lint 0, blocking (singleflight cancellation) fixed in phase.
+
+## 2026-10-14T17:14:50Z — human
+"status please?"
+
+## 2026-10-14T17:21:03Z — human
+"status please? - what is pending, what we got?"
+
+## 2026-10-14T17:23:07Z — human
+"make sure the readme is up to date - please update it as PRs arrive"
+
+## 2026-10-14T17:23:07Z — lead
+README rewritten per README-SKELETON reflecting merged state (A, B, D); status note for pending wiring/CI/obs; will update at every merge.
+
+## 2026-10-14T17:27:00Z — human
+"how is E-team doing?"
+
+## 2026-10-14T17:28:14Z — human
+"what is pending from phase 1"
+
+## 2026-10-14T17:37:32Z — lead → human
+C merged (PR #11) after first CI run green. README gate from a clean clone passed; README defects fixed (version via make, pgdata password). G4 at +61.

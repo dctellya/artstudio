@@ -158,6 +158,12 @@ func (c Config) validate() error {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
 		return fmt.Errorf("UPSTREAM_BASE_URL must be an http or https URL")
 	}
+	if c.OTLPEndpoint != "" {
+		o, err := url.Parse(c.OTLPEndpoint)
+		if err != nil || o.Scheme != "https" || o.Host == "" {
+			return fmt.Errorf("OTEL_EXPORTER_OTLP_ENDPOINT must be an https URL")
+		}
+	}
 	durations := map[string]time.Duration{
 		"UPSTREAM_ATTEMPT_TIMEOUT": c.UpstreamAttemptTimeout, "UPSTREAM_BUDGET": c.UpstreamBudget,
 		"UPSTREAM_BACKOFF_BASE": c.UpstreamBackoffBase, "UPSTREAM_BACKOFF_MAX": c.UpstreamBackoffMax,
