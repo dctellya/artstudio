@@ -72,6 +72,7 @@ One command per claim. `CA` and `API` as above.
 | Load shedding | `artstudio_http_shed_total` in metrics (needs a load tool to trigger; the unit test covers it) |
 | TLS only | `curl -s http://localhost:8443/health` gets no service (400 "HTTP request to an HTTPS server"); `curl --cacert "$CA" https://localhost:8443/health` works; `openssl s_client -connect localhost:8443 -tls1_2 </dev/null` is refused |
 | Logs ↔ traces | `GRAFANA_ADMIN_PASSWORD=... make test-obs`; in Grafana, a Loki line's `trace_id` opens Tempo and a span's "Logs for this span" opens Loki |
+| Signed image, SBOM | `docker pull ghcr.io/dctellya/artstudio:main` works anonymously; `cosign verify ghcr.io/dctellya/artstudio:main --certificate-identity-regexp 'github.com/dctellya/artstudio' --certificate-oidc-issuer https://token.actions.githubusercontent.com`; the SPDX SBOM is the `sbom-spdx` artifact of the CI `image` job; trivy fails the job on CRITICAL |
 | SLOs and alerts | Grafana → Alerting → rules: the burn-rate and breaker alerts with their runbook links to this README |
 
 ### Chaos profile
@@ -169,6 +170,10 @@ alloy ─scrape https (CA)─▶ api:9090                     (network obs, not 
 | Stale window 60 min, every vendor call audited (D-006) | old artwork records are still right | Redis behind the same Cache interface |
 | Contract first, generated router, sanitised 400s (D-007) | one artefact drives docs and validation | same |
 | Middleware order, Retry-After defaults (D-008) | reject early, always tell clients when to retry | limiter at the edge proxy |
+| Telemetry over OTLP/https, off when unset (D-009) | logs reach Loki without a docker socket | collector per node |
+| Chaos via `make chaos-up`, stub on the internal network (D-010) | a profile cannot change the api's env | fault injection in staging |
+| CI: three light jobs + image/policy after them (D-011) | wall clock = slowest job, under 2 min warm | SHA-pinned actions, required checks |
+| Alloy → Mimir/Tempo/Loki linked by trace id (D-012) | one round trip from `X-Request-ID` | HA backends, object storage |
 | Client rate limit 1 req/s burst 5 per process | the vendor allows 60/min anonymous | with N replicas: a shared limiter (Redis) or 1/N each |
 
 Full text: `docs/decisions/`, index in `DECISIONS.md`.
@@ -216,11 +221,16 @@ Why it exists: an audit of exactly what the vendor returned; a queryable history
 
 ## Time spent
 
-Box: 90 minutes, 16:36 → 18:06 UTC on 2026-10-14; per-gate times in `docs/time-log.md`.
+Box: 90 minutes, 16:36 → 18:06 UTC on 2026-10-14. Phase 1 (MVP) closed at 17:37 (+61: CI green on its first run, README gate from a clean clone); phase 2 merged at 17:51 (+75). Per-gate times in `docs/time-log.md`; nothing after the box.
 
 ## Next steps
 
-See `BACKLOG.md`; the main items: TLS on internal links; shared limiter and Redis cache for N replicas; latency SLO alerts; Tempo metrics generator; SHA-pinned actions.
+See `BACKLOG.md` (B-001..B-042, each with its reason). The main ones:
+- **TLS on internal links** (B-031): postgres `sslmode=verify-full` and the obs backends behind the same CA.
+- **N replicas**: shared rate limiter and Redis behind the `Cache` interface; migration under an advisory lock (B-004).
+- **Cache-hit latency** (B-041): the live run measured p95 ≈ 72 ms against the 20 ms SLO; profile before tuning.
+- **Alerting**: latency SLO alerts (B-025), Alertmanager (B-030), Tempo metrics generator (B-029).
+- **Supply chain**: SHA-pinned actions (B-001), stub out of the production image (B-037).
 
 ## How it was built
 

@@ -1,5 +1,5 @@
 # artstudio — Spec for the implementing agent team
-Owner: David Carbajosa (architect, reviewer). Implementers: agent team per docs/TEAM-PROTOCOL.md. Status: v1.0 approved (2026-10-14). Living document: §9 is the human feedback channel, §10 the as-built history.
+Owner: David Carbajosa (architect, reviewer). Implementers: agent team per docs/TEAM-PROTOCOL.md. Status: v1.1 as-built (2026-10-14). Living document: §9 is the human feedback channel, §10 the as-built history.
 
 ## 1. Purpose
 - **What:** a Go gateway in front of the Art Institute of Chicago API (`https://api.artic.edu/api/v1`, anonymous, 60 req/min). Search artworks, fetch one artwork, return the IIIF image URL `{iiif_url}/{image_id}/full/843,/0/default.jpg`.
@@ -183,3 +183,5 @@ No `needs` among light jobs; prebuilt actions only; CI never starts the obs stac
 | B-1 | 17:11 PR #5 | contract, generated router, validation, server chain, problem+json, Swagger UI | server/contract | middleware order (D-008); servers "/", /docs/{file} (D-007) |
 | fixes | 17:18–17:25 PR #7, #9, #10 | integration findings: metric families from start (A, D), X-Cache on errors (B) | regression tests in owning packages | coder-written tests, lead-accepted under the box |
 | C-1 | 17:35 PR #11 | wiring, telemetry (OTLP/https), graceful shutdown, CI (test/scan/build), acceptance suite | 9 unit packages, 5 integration, acceptance 12 + stop + chaos; first CI run green (test 1m55s cold, build 1m02s, scan 55s) | D-009..D-011; stub healthcheck off |
+| C-2 | 17:47 PR #13 | image (multi-arch, trivy, SBOM, cosign, ghcr) and policy (checkov, obs-validate) jobs; cross-compile; make up with overlay | PR CI: test 1m00s, build 59s, scan 29s, policy 21s | qemu-action pin v4.4.0 added; compose not scanned by checkov; anon pull continue-on-error until package is public |
+| E-1/2 | 17:51 PR #14 | Alloy, Mimir, Tempo, Loki, Grafana; rules, dashboard; logs↔traces via structured metadata | validate.sh; live round trip ok 6.2s | D-012; Alloy tmpfs WAL; TLS "1.3" syntax |

@@ -68,3 +68,18 @@ keep 16:36 in point 1. 2. Agreed: keep the ranges, 400 problem+json when limit �
 ## 2026-10-14T16:46Z — Lead
 
 Applied F-002..F-006 to SPEC.md v1.0; skeleton CODER spawned at +10.
+
+## 2026-10-14T16:54Z → 17:50Z — Human ↔ Lead (condensed exchanges; full subagent prompts and answers in docs/agents/logs/)
+
+- 17:01 Human: "check c-coder as well" → Lead: audited team-c branch; vacuum `:latest` in Makefile and ci.yml sent back to pin v0.33.0 (same finding in E's test images).
+- 17:14 Human: "status please?" → Lead: G0 +18, G1 +27, G2 +35 (A, B, D merged; one blocking finding each fixed in phase); C wiring, E in fix round.
+- 17:21 Human: "status please? - what is pending, what we got?" → Lead: merged inventory, pending gates G3/G4/phase 2/G5, risks.
+- 17:22 Human: "make sure the readme is up to date - please update it as PRs arrive" → Lead: README rewritten per skeleton to the merged state (PR #8), updated at each merge since.
+- 17:27 Human: "how is E-team doing?" → Lead: static gate green, review fixes done, held until G4.
+- 17:28 Human: "what is pending from phase 1" → Lead: only C (acceptance rerun, review, gate, CI first run, README gate).
+- 17:40 Human: "please check that logs and traces are integrated as well as the nice dashboard of metrics" → Lead: live check found Alloy crash-looping; E fix verified logs (Loki), traces (Tempo spans), metrics (Mimir), dashboard panels, ruler.
+- 17:40 Human: "once obs is merged ensure that the docker compose commands are updated to spin up all the overlays, including the obs one" → Lead: `make up/down` use both files (PR #13); README Start/Stop use both files (PR #14).
+- 17:46 Lead → Human: after the first image push, set the ghcr package public once (GITHUB_TOKEN cannot).
+- 17:48 Human: "how is e-team doing?" → Lead: Alloy fixed; Loki lines with request_id/trace_id; Mimir series; remaining evidence pending → then PASS, PR #14.
+- 17:51 Lead → Human: E merged; first image job green (2m30s); anonymous pull works, the package inherited public visibility — no action needed.
+- 17:53 Lead: G5 — DECISIONS.md, final reports, SPEC v1.1 as-built, README complete; tag v0.1.0.
