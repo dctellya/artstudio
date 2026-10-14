@@ -15,6 +15,8 @@ services:
     environment:
       DATABASE_URL: postgres://artstudio:${POSTGRES_PASSWORD}@postgres:5432/artstudio?sslmode=disable
       UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:-https://api.artic.edu/api/v1}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_EXPORTER_OTLP_CERTIFICATE: /certs/ca.pem
     volumes:
       - ./deploy/certs:/certs:ro
     read_only: true

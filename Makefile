@@ -8,13 +8,10 @@ COMMIT        ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 IMAGE         ?= artstudio:local
 GITLEAKS      := zricethezav/gitleaks:v8.30.1
 HADOLINT      := hadolint/hadolint:v2.15.1
+VACUUM        := dshanley/vacuum:latest
 FAULT         ?=
 
-define not_yet
-	@echo "not yet: $(1)"; exit 1
-endef
-
-.PHONY: certs build test test-integration test-acceptance up down lint vet vuln gitleaks hadolint image ci decisions chaos-up chaos heal obs-validate test-obs
+.PHONY: certs build test test-integration test-acceptance up down lint vet vuln gitleaks hadolint image ci decisions chaos-up chaos heal obs-validate test-obs lint-api generate
 
 certs:
 	go run ./tools/gencert
@@ -44,11 +41,17 @@ vet:
 lint:
 	golangci-lint run
 
+lint-api:
+	$(DOCKER) run --rm -v "$(CURDIR):/work:ro" $(VACUUM) lint -d /work/api/openapi.yaml
+
+generate:
+	go tool oapi-codegen -config api/oapi-codegen.yaml api/openapi.yaml
+
 vuln:
 	govulncheck ./...
 
 gitleaks:
-	$(DOCKER) run --rm -v "$(CURDIR):/repo" $(GITLEAKS) dir /repo --redact
+	$(DOCKER) run --rm -v "$(CURDIR):/repo" $(GITLEAKS) dir /repo --config /repo/.gitleaks.toml --redact
 
 hadolint:
 	$(DOCKER) run --rm -i $(HADOLINT) < Dockerfile
@@ -56,7 +59,7 @@ hadolint:
 image:
 	$(DOCKER) build --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(IMAGE) .
 
-ci: vet lint test vuln gitleaks hadolint image
+ci: vet lint lint-api test vuln gitleaks hadolint image
 
 decisions:
 	@{ echo "# Decisions"; echo; \
@@ -66,18 +69,20 @@ decisions:
 	done; } > DECISIONS.md
 	@echo "wrote DECISIONS.md"
 
+COMPOSE_FILES := -f compose.yaml $(if $(wildcard compose.obs.yaml),-f compose.obs.yaml)
+
 chaos-up: certs
-	UPSTREAM_BASE_URL=http://stub:8080/api/v1 $(COMPOSE) --profile chaos up -d --build --wait
+	UPSTREAM_BASE_URL=http://stub:8080/api/v1 $(COMPOSE) $(COMPOSE_FILES) --profile chaos up -d --build --wait
 
 chaos:
 	@test -n "$(FAULT)" || { echo "usage: make chaos FAULT=429|503|slow|timeout"; exit 1; }
-	$(COMPOSE) exec stub /stubserver ctl $(FAULT)
+	$(COMPOSE) $(COMPOSE_FILES) exec stub /stubserver ctl $(FAULT)
 
 heal:
-	$(COMPOSE) exec stub /stubserver ctl clear
+	$(COMPOSE) $(COMPOSE_FILES) exec stub /stubserver ctl clear
 
 obs-validate:
-	$(call not_yet,compose.obs.yaml and deploy/obs (team E))
+	bash deploy/obs/validate.sh
 
 test-obs:
-	$(call not_yet,observability stack (team E, after G3))
+	go test -tags obs ./test/obs/...
