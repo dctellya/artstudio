@@ -1,6 +1,8 @@
 package artic
 
 import (
+	"strconv"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -42,5 +44,33 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Help: "Concurrent vendor calls."}),
 		bulkheadReject: f.NewCounter(prometheus.CounterOpts{Namespace: ns, Name: "upstream_bulkhead_rejected_total",
 			Help: "Calls rejected because the bulkhead was full."}),
+	}
+}
+
+var (
+	operations = []string{"search", "artwork", "probe"}
+	// retryReasons are the values the retry loop reports.
+	retryReasons = []string{"network", "429", "502", "503", "504"}
+	// attemptStatuses are the outcomes an attempt is labelled with.
+	attemptStatuses = []string{"200", "404", "429", "500", "502", "503", "504", "error"}
+	// breakerTransitions are the pairs gobreaker can produce.
+	breakerTransitions = [][2]string{{"closed", "open"}, {"open", "half-open"}, {"half-open", "closed"}, {"half-open", "open"}}
+)
+
+// initLabels creates every known label set at 0 so each family is exported from startup.
+func (m *metrics) initLabels(maxRetries int) {
+	for _, t := range breakerTransitions {
+		m.transitions.WithLabelValues(t[0], t[1])
+	}
+	for _, op := range operations {
+		m.duration.WithLabelValues(op)
+		for _, r := range retryReasons {
+			m.retries.WithLabelValues(op, r)
+		}
+		for _, st := range attemptStatuses {
+			for a := 1; a <= maxRetries+1; a++ {
+				m.requests.WithLabelValues(op, st, strconv.Itoa(a))
+			}
+		}
 	}
 }
