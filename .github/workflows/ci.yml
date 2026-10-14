@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
@@ -72,3 +72,92 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  image:
+    needs: [test, scan, build]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/artstudio
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: docker/setup-qemu-action@v4.4.0
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+      - id: build
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            VERSION=${{ github.ref_name }}
+            COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ github.event.head_commit.timestamp || github.event.repository.pushed_at }}
+      - name: Lowercase image ref
+        run: echo "REF=${IMAGE,,}@${{ steps.build.outputs.digest }}" >> "$GITHUB_ENV"
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.REF }}
+          version: v0.76.0
+          severity: CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+      - uses: anchore/sbom-action@v0.24.3
+        with:
+          image: ${{ env.REF }}
+          syft-version: v1.54.1
+          format: spdx-json
+          output-file: sbom.spdx.json
+          upload-artifact: false
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: sbom-spdx
+          path: sbom.spdx.json
+      - uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: v3.1.3
+      - name: Sign image (keyless)
+        run: cosign sign --yes "$REF"
+      # A package first created by GITHUB_TOKEN is private; the owner makes it
+      # public once, after which this proves anonymous pull.
+      - name: Anonymous pull
+        continue-on-error: true
+        run: |
+          docker logout ghcr.io
+          docker pull "$REF"
+
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      # checkov 3.3.29 has no docker_compose framework: compose.yaml is not
+      # scanned here (compose is covered by `docker compose config` locally).
+      - uses: bridgecrewio/checkov-action@v12.3134.0
+        with:
+          directory: .
+          framework: dockerfile,github_actions
+          soft_fail: false # no skip_check: checkov 3.3.29 reports 0 failures on Dockerfile + workflows
+      - name: Validate observability config
+        if: hashFiles('deploy/obs/validate.sh') != ''
+        run: make obs-validate
