@@ -1,0 +1,74 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: artstudio
+          POSTGRES_PASSWORD: ci-ephemeral
+          POSTGRES_DB: artstudio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U artstudio -d artstudio"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://artstudio:ci-ephemeral@localhost:5432/artstudio?sslmode=disable
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go vet ./...
+      - uses: golangci/golangci-lint-action@v9.3.0
+        with:
+          version: v2.14.0
+      - run: go test -race -cover ./...
+      - name: Lint OpenAPI contract (vacuum)
+        run: docker run --rm -v "$PWD:/work:ro" dshanley/vacuum:v0.33.0 lint -d /work/api/openapi.yaml
+      - name: Integration tests
+        run: go test -race -count=1 -tags integration -run 'Integration|TestMigrateIdempotent|TestBatchInsertLandsRows|TestPoolMetricsRegistered|TestBadRowDoesNotLoseBatch|TestVendorFault' ./internal/...
+
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: gitleaks
+        run: docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks:v8.30.1 dir /repo --config /repo/.gitleaks.toml --redact
+      - uses: golang/govulncheck-action@v1.1.0
+        with:
+          go-version-file: go.mod
+      - uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: Dockerfile
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

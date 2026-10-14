@@ -16,6 +16,9 @@ linters:
     rules:
       - path: _test\.go
         linters: [errcheck, bodyclose]
+      - path: test/acceptance/
+        linters: [gosec]
+        text: G204 # the suite drives docker compose by design
 formatters:
   enable:
     - gofmt
