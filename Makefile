@@ -5,11 +5,14 @@ API_URL       ?= https://localhost:8443
 CA_FILE       ?= $(CURDIR)/deploy/certs/ca.pem
 VERSION       ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT        ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
+BUILD_DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 IMAGE         ?= artstudio:local
 GITLEAKS      := zricethezav/gitleaks:v8.30.1
 HADOLINT      := hadolint/hadolint:v2.15.1
 VACUUM        := dshanley/vacuum:v0.33.0
 FAULT         ?=
+
+export VERSION COMMIT BUILD_DATE
 
 .PHONY: certs build test test-integration test-acceptance test-acceptance-chaos test-acceptance-stop up down lint vet vuln gitleaks hadolint image ci decisions chaos-up chaos heal obs-validate test-obs lint-api generate
 
@@ -17,7 +20,7 @@ certs:
 	go run ./tools/gencert
 
 build:
-	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT)" -o bin/ ./cmd/...
+	CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildDate=$(BUILD_DATE)" -o bin/ ./cmd/...
 
 test:
 	go test -race ./...
@@ -63,7 +66,7 @@ hadolint:
 	$(DOCKER) run --rm -i $(HADOLINT) < Dockerfile
 
 image:
-	$(DOCKER) build --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) -t $(IMAGE) .
+	$(DOCKER) build --build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) -t $(IMAGE) .
 
 ci: vet lint lint-api test vuln gitleaks hadolint image
 
