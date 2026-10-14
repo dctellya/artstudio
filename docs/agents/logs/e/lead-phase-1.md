@@ -25,3 +25,15 @@ Includes lead concern: otelslog→OTLP puts trace_id in structured metadata, not
 773df55. 3 BLOCKING: Loki derived field regex on body never matches (trace_id is structured metadata); Tempo tracesToLogs text search finds nothing; GRAFANA_ADMIN_PASSWORD may be empty (security). 7 BACKLOG (B-025..B-030). Lead adds alloy min TLS 1.3 (spec edge rule) to the same fix round.
 
 ## 2026-10-14T17:09:32Z — BLOCKING → TESTER (validate.sh checks) then CODER.
+
+## 2026-10-14T17:39:34Z — lead live check (phase 2)
+Full stack up healthy; `go test -tags obs` FAIL: no access log line in Loki. Cause: alloy crash-loop (storage path permission).
+
+## 2026-10-14T17:48:01Z — CODER fix
+4644477: alloy --storage.path on tmpfs; TLS min "1.3" (Alloy rejects "TLS13"); probe latency panel query. Evidence: obs test ok 6.978s; Loki lines with request_id/trace_id/span_id; Tempo spans GET /art/{query}, HTTP GET, cache.get, vendor.attempt; Mimir 3 + 72 series; dashboard panels with data (miss p95 NaN when no misses); ruler groups health ok.
+
+## 2026-10-14T17:48:40Z — TESTER fix
+f2910a3: validate.sh requires "1.3".
+
+## 2026-10-14T17:49:05Z — lead gate
+validate.sh exit 0; go test -tags obs ok 6.192s (lead run 17:48); Loki and Mimir queried directly by the lead. PASS. Merged main, report, D-012, B-041/B-042.

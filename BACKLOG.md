@@ -42,3 +42,5 @@
 | B-038 | Dockerfile `--platform=$BUILDPLATFORM` + TARGETOS/TARGETARCH for fast multi-arch | review C#13 | C review |
 | B-039 | healthcheck defaults duplicate config; 3s timeout unconfigured | review C#15 | C review |
 | B-040 | acceptance docker calls without DOCKER_DEFAULT_PLATFORM= prefix | review C#16 | C review |
+| B-041 | p95 for cache hits measured ~72 ms in the live run vs the 20 ms SLO: investigate (bucket interpolation on few samples vs real latency) | phase 2 live check | E coder |
+| B-042 | Alloy runs as root with cap_drop ALL and a tmpfs WAL: run as the alloy user with a writable volume | phase 2 live check | E coder |
