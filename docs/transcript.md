@@ -83,3 +83,12 @@ Applied F-002..F-006 to SPEC.md v1.0; skeleton CODER spawned at +10.
 - 17:48 Human: "how is e-team doing?" → Lead: Alloy fixed; Loki lines with request_id/trace_id; Mimir series; remaining evidence pending → then PASS, PR #14.
 - 17:51 Lead → Human: E merged; first image job green (2m30s); anonymous pull works, the package inherited public visibility — no action needed.
 - 17:53 Lead: G5 — DECISIONS.md, final reports, SPEC v1.1 as-built, README complete; tag v0.1.0.
+- 17:54 Lead → Human: done at +78; gates table; open items B-041, B-031, B-001.
+
+## 2026-10-14T17:57:27Z — Human
+
+Two README edits, then close: 1) intro CI bullet: "image build and scan, SBOM, keyless signature, policy checks" instead of "image build"; 2) next steps B-041: add "measured client-side through the Docker proxy; the SLI is the server-side histogram". Then time-log final entry, transcript export last, commit, tag v0.1.0.
+
+## 2026-10-14T17:57:27Z — Lead
+
+Both README edits applied. Checked live: the server-side hit p95 is 7.25 ms (20 hits, all within the 5 ms bucket), so the 72 ms figure was client-side, as the note says. Time log closed at +81. Tag v0.1.0 already points at ce74798 (pushed at 17:54); moving it means deleting and re-pushing a published tag, so the lead asks before doing that.

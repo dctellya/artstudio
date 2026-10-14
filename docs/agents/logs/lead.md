@@ -63,3 +63,9 @@ Phase 2 live check: alloy crash-loop (storage path permission) → E coder fix w
 
 ## 2026-10-14T17:52:21Z — lead → human
 E merged (PR #14); image job green; anonymous pull works (no human action needed). Final deliverables committed; tagging v0.1.0.
+
+## 2026-10-14T17:57:27Z — human
+Two README edits, then close: 1) intro CI bullet: "image build and scan, SBOM, keyless signature, policy checks" instead of "image build"; 2) next steps B-041: add "measured client-side through the Docker proxy; the SLI is the server-side histogram". Then time-log final entry, transcript export last, commit, tag v0.1.0.
+
+## 2026-10-14T17:57:27Z — lead
+Both README edits applied; checked the server-side SLI live: hit p95 from artstudio_http_request_duration_seconds = 7.25 ms (20 hits, all in the 5 ms bucket), consistent with the note. Time log closed at +81. Tag v0.1.0 already exists on ce74798 (pushed 17:54); moving a pushed tag rewrites history, so asking before doing it.

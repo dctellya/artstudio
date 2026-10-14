@@ -9,7 +9,7 @@ artstudio is a gateway in front of a third-party API (the Art Institute of Chica
 - **Operability**: `/health`, `/ready` (reports the vendor and the breaker, never gates on them), `/metrics`, `/version`, and the API described in `/docs` as an OpenAPI contract that also validates requests.
 - **Observability** on the Grafana stack: metrics, traces and logs, linked by trace id, one dashboard with the SLOs and the error budget, alert rules with runbooks.
 - **Hardening**: per-client rate limit, load shedding, request ids, panic recovery, graceful shutdown, config from the environment, no secrets in logs; a distroless, non-root, multi-arch image.
-- **CI** as a gate: lint, unit and contract tests, vulnerability scan, secrets scan, image build; acceptance tests end to end against the running stack.
+- **CI** as a gate: lint, unit and contract tests, vulnerability scan, secrets scan, image build and scan, SBOM, keyless signature, policy checks; acceptance tests end to end against the running stack.
 
 Images are never fetched: the service builds the IIIF URL and the client hotlinks it.
 
@@ -228,7 +228,7 @@ Box: 90 minutes, 16:36 → 18:06 UTC on 2026-10-14. Phase 1 (MVP) closed at 17:3
 See `BACKLOG.md` (B-001..B-042, each with its reason). The main ones:
 - **TLS on internal links** (B-031): postgres `sslmode=verify-full` and the obs backends behind the same CA.
 - **N replicas**: shared rate limiter and Redis behind the `Cache` interface; migration under an advisory lock (B-004).
-- **Cache-hit latency** (B-041): the live run measured p95 ≈ 72 ms against the 20 ms SLO; profile before tuning.
+- **Cache-hit latency** (B-041): the live run measured p95 ≈ 72 ms against the 20 ms SLO, measured client-side through the Docker proxy; the SLI is the server-side histogram; profile before tuning.
 - **Alerting**: latency SLO alerts (B-025), Alertmanager (B-030), Tempo metrics generator (B-029).
 - **Supply chain**: SHA-pinned actions (B-001), stub out of the production image (B-037).
 
