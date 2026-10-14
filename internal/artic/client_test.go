@@ -349,12 +349,13 @@ func TestContactHeaderSent(t *testing.T) {
 }
 
 func TestSearchRequestAndImageURL(t *testing.T) {
-	var path, q, limit, page atomic.Value
+	var path, q, limit, page, fields atomic.Value
 	e := newEnv(t, func(w http.ResponseWriter, r *http.Request) {
 		path.Store(r.URL.Path)
 		q.Store(r.URL.Query().Get("q"))
 		limit.Store(r.URL.Query().Get("limit"))
 		page.Store(r.URL.Query().Get("page"))
+		fields.Store(r.URL.Query().Get("fields"))
 		_, _ = w.Write([]byte(searchBody))
 	}, nil)
 	res, call, err := e.client.Search(bg, ports.SearchQuery{Q: "monet", Limit: 10, Page: 2})
@@ -363,6 +364,7 @@ func TestSearchRequestAndImageURL(t *testing.T) {
 	assert.Equal(t, "monet", q.Load())
 	assert.Equal(t, "10", limit.Load())
 	assert.Equal(t, "2", page.Load())
+	assert.Equal(t, "id,title,artist_display,date_display,image_id", fields.Load())
 	assert.Equal(t, "search", call.Operation)
 	assert.Equal(t, 200, call.Status)
 	assert.NotEmpty(t, call.Body)
@@ -371,7 +373,7 @@ func TestSearchRequestAndImageURL(t *testing.T) {
 	assert.Equal(t, 2, res.Page)
 	require.Len(t, res.Items, 1)
 	assert.Equal(t, ports.Artwork{
-		ID: 27992, Title: "A Sunday on La Grande Jatte", Artist: "Georges Seurat", Date: "1884-86",
+		ID: 27992, Title: "A Sunday on La Grande Jatte", Artist: "Georges Seurat (French, 1859–1891)", Date: "1884-86",
 		ImageID:  imageID,
 		ImageURL: iiifURL + "/" + imageID + "/full/843,/0/default.jpg",
 	}, res.Items[0])

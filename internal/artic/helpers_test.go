@@ -17,8 +17,8 @@ import (
 const (
 	iiifURL     = "https://www.artic.edu/iiif/2"
 	imageID     = "2d484387-2509-5e8e-2c43-22f9981972eb"
-	artworkBody = `{"data":{"id":27992,"title":"A Sunday on La Grande Jatte","artist_title":"Georges Seurat","date_display":"1884-86","image_id":"` + imageID + `"},"config":{"iiif_url":"` + iiifURL + `"}}`
-	searchBody  = `{"pagination":{"total":42,"limit":10,"offset":10,"total_pages":5,"current_page":2},"data":[{"id":27992,"title":"A Sunday on La Grande Jatte","artist_title":"Georges Seurat","date_display":"1884-86","image_id":"` + imageID + `"}],"config":{"iiif_url":"` + iiifURL + `"}}`
+	artworkBody = `{"data":{"id":27992,"title":"A Sunday on La Grande Jatte","artist_display":"Georges Seurat (French, 1859–1891)","date_display":"1884-86","image_id":"` + imageID + `"},"config":{"iiif_url":"` + iiifURL + `"}}`
+	searchBody  = `{"pagination":{"total":42,"limit":10,"offset":10,"total_pages":5,"current_page":2},"data":[{"id":27992,"title":"A Sunday on La Grande Jatte","artist_display":"Georges Seurat (French, 1859–1891)","date_display":"1884-86","image_id":"` + imageID + `"}],"config":{"iiif_url":"` + iiifURL + `"}}`
 )
 
 // testConfig is the default config pointed at srvURL with test-sized durations.
