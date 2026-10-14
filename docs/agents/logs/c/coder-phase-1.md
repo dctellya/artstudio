@@ -8,3 +8,4 @@
 2026-10-14T16:57:03Z Validation: yaml parse ok; actionlint (docker rhysd/actionlint) clean on ci.yml; make lint test vuln gitleaks hadolint image rc=0 (0 lint issues, no vulns, no leaks); make lint-api fails: api/openapi.yaml missing (expected, Team B).
 Deviations: Dockerfile unchanged (already builds ./cmd/... to /). obs-validate/test-obs depend on Team E files.
 2026-10-14T17:02:23Z Lead fix: pinned dshanley/vacuum:latest -> v0.33.0 in Makefile and ci.yml; grep for :latest/@main/@master found no other unpinned refs.
+2026-10-14T17:02:26Z First sed failed (BSD sed -i); commit 5d2fd0a held only the log. Reapplied the pin with sed -i ''.

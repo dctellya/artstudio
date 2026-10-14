@@ -42,7 +42,7 @@ jobs:
           version: v2.14.0
       - run: go test -race -cover ./...
       - name: Lint OpenAPI contract (vacuum)
-        run: docker run --rm -v "$PWD:/work:ro" dshanley/vacuum:latest lint -d /work/api/openapi.yaml
+        run: docker run --rm -v "$PWD:/work:ro" dshanley/vacuum:v0.33.0 lint -d /work/api/openapi.yaml
       - name: Integration tests
         run: go test -race -tags integration ./internal/...
 

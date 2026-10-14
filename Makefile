@@ -8,7 +8,7 @@ COMMIT        ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
 IMAGE         ?= artstudio:local
 GITLEAKS      := zricethezav/gitleaks:v8.30.1
 HADOLINT      := hadolint/hadolint:v2.15.1
-VACUUM        := dshanley/vacuum:latest
+VACUUM        := dshanley/vacuum:v0.33.0
 FAULT         ?=
 
 .PHONY: certs build test test-integration test-acceptance up down lint vet vuln gitleaks hadolint image ci decisions chaos-up chaos heal obs-validate test-obs lint-api generate
