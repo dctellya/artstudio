@@ -17,3 +17,18 @@ Box t0 stays 16:36Z. Q2 agreed (400 when limit×page>1000, vendor 403 → 502). 
 
 ## 2026-10-14T16:46:06Z — actions
 Applied F-002..F-006 to SPEC.md (v1.0, 179 lines). Committing on branch c/skeleton; spawning the skeleton CODER (sonnet). Elapsed +10 at spawn: skeleton gate G0 will be late; reported to the human.
+
+## 2026-10-14T17:02:26Z — human
+"check c-coder as well"
+
+## 2026-10-14T17:02:26Z — lead
+Audited team-c/phase-1: vacuum image unpinned (:latest) in Makefile and ci.yml; sent back to the coder to pin v0.33.0. Same finding in E tester (prometheus, yq :latest) sent back to pin.
+
+## 2026-10-14T17:06:28Z — lead → human
+Team D merged (PR #3): unit + integration green, lint 0, blocking security finding fixed in phase.
+
+## 2026-10-14T17:10:30Z — lead → human
+Team A merged (PR #4): unit + integration green, lint 0, blocking (singleflight cancellation) fixed in phase.
+
+## 2026-10-14T17:14:50Z — human
+"status please?"
